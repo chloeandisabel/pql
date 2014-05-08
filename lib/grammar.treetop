@@ -1,0 +1,156 @@
+grammar PatternDescription
+  
+  # expressions and clauses
+
+  rule matching_expression
+    'WHERE' condition <MatchingExpression>
+  end
+
+  rule value_expression
+    '(' reductive_operator? name matching_expression ')' <ValueExpression>
+  end
+
+  rule condition
+    space? (ordered_condition / unordered_condition) space?
+  end
+
+  rule ordered_condition
+    space? '(' condition ')' space? <OrderedCondition>
+  end
+
+  rule unordered_condition
+    name comparative_operator (literal / value_expression) (logical_operator condition)? <UnorderedCondition>
+  end
+
+
+  # reductive operators
+
+  rule reductive_operator
+    space? (max / min / count / sum) space?
+  end
+
+  rule max
+    'MAX' <MaxOperator>
+  end
+
+  rule min
+    'MIN' <MinOperator>
+  end
+
+  rule count
+    'COUNT' <CountOperator>
+  end
+
+  rule sum
+    'SUM' <SumOperator>
+  end
+
+
+  # logical operators
+
+  rule logical_operator
+    space? (and / or) space?
+  end
+
+  rule and
+    'AND' <AndOperator>
+  end
+
+  rule or
+    'OR' <OrOperator>
+  end
+
+
+  # comparative operators
+
+  rule comparative_operator
+    space?
+    (does_not_equal / is_greater_than_or_equal_to / is_less_than_or_equal_to
+      / matches / is_in / is_not_in / is_greater_than / is_less_than / equals)
+    space?
+  end
+
+  rule does_not_equal
+    '!=' <DoesNotEqualOperator>
+  end
+
+  rule is_greater_than_or_equal_to
+    '>=' <IsGreaterThanOrEqualToOperator>
+  end
+
+  rule is_less_than_or_equal_to
+    '<=' <IsLessThanOrEqualToOperator>
+  end
+
+  rule matches
+    '=~' <MatchesOperator>
+  end
+
+  rule is_in
+    'IN' <IsInOperator>
+  end
+
+  rule is_not_in
+    'NOT IN' <IsNotInOperator>
+  end
+
+  rule is_greater_than
+    '>' <IsGreaterThanOperator>
+  end
+
+  rule is_less_than
+    '<' <IsLessThanOperator>
+  end
+
+  rule equals
+    '=' <EqualsOperator>
+  end
+
+
+  # literals
+
+  rule literal
+    space?
+    (list_literal / string_literal / regular_expression_literal
+      / float_literal / integer_literal / null_literal)
+    space?
+  end
+
+  rule list_literal
+    '[' space? literal space? (',' space? literal)* space? ']' <ListLiteral> /
+    '[' space? ']' <ListLiteral>
+  end
+
+  rule string_literal
+    '"' ('\"' / !'"' .)* '"' <StringLiteral> /
+    "'" ("\'" / !"'" .)* "'" <StringLiteral> 
+  end
+
+  rule regular_expression_literal
+    '/' ('\/' / !'/' .)* '/' <RegularExpressionLiteral>
+  end
+
+  rule float_literal
+    ('+' / '-')? [0-9]+ '.' [0-9]+ <FloatLiteral>
+  end
+
+  rule integer_literal
+    ('+' / '-')? [0-9]+ <IntegerLiteral>
+  end
+
+  rule null_literal
+    'NULL' <NullLiteral>
+  end
+
+
+  # name and whitespace helpers
+
+  rule name
+    space? ([a-zA-Z_]+ <Name>) space?
+  end
+
+  rule space
+    [\s]+
+  end
+
+end
