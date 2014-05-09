@@ -3,90 +3,133 @@ class Treetop::Runtime::SyntaxNode
     self.class.name == 'Treetop::Runtime::SyntaxNode'
   end
 
-  def get(node_type)
-    elements.find{|e| e.is_a? node_type}
-  end
-
-  def all(node_type)
-    elements.select{|e| e.is_a? node_type}
+  def descendants
+    if elements
+      elements.map{|e| [e] + e.descendants}.flatten
+    else
+      []
+    end
   end
 end
 
 
-module PatternDescription
+module PQL
+
+  # root class for nodes
+  
+  class Node < Treetop::Runtime::SyntaxNode
+  end
+
 
   # expressions and clauses
 
-  class MatchingExpression < Treetop::Runtime::SyntaxNode
-    def matches(stream)
-      stream.select &get(Condition).to_proc
+  class MatchingExpression < Node
+    def match(stream)
+      selective_expression.select stream
     end
   end
 
-  class ValueExpression < Treetop::Runtime::SyntaxNode
-    def values(stream)
-      values = matching_expression.matches.map &:"#{name.value}"
-      values = reductive_operator.operate values if reductive_operator
-      values
+  class SelectiveExpression < Node
+    def select(stream)
+      matches = stream.select &condition.to_proc(stream)
+      matches = subset_operator.operate matches if respond_to? :subset_operator
+      matches
     end
   end
 
-  class Condition < Treetop::Runtime::SyntaxNode
-    def compound?
-      logical_operator.present?
+  class ValueExpression < Node
+    def value(stream)
+      value = selective_expression.select(stream).map{|obj| obj[:"#{name.value}"]}
+      value = reductive_operator.operate value if respond_to? :reductive_operator
+      value
     end
+  end
 
-    def match
+  class Condition < Node
+    def to_proc(stream)
+      # memoize proc for a given stream
+      return @proc if @proc and @stream == stream
+      @stream = stream
 
-    end
+      # prune syntax nodes from tree
+      recursor = ->(node) do
+        node.elements.map{|e| 
+          if [Condition, Comparison, LogicalOperator].include? e.class
+            e
+          elsif e.elements
+            recursor.call e
+          else
+            []
+          end
+        }.flatten
+      end
 
-    def compound_match
-    end
+      # return a proc taking an object and returning a boolean indicating whether
+      # or not that object meets the condition
+      @proc = -> (obj) do
+        nodes = recursor.call(self)
+        value = nodes.shift.to_proc(stream).call obj
 
-    def to_proc
-      if logical_operator
-        logical_operator
-      else
-        -> (subject) {comparative_operator.operate subject.send(left), right}
+        while nodes.length > 1
+          operator, right = nodes[0..1]
+          nodes = nodes[2..-1]
+
+          right_value = right.to_proc(stream).call obj
+
+          value = operator.operate value, right_value
+        end
+        
+        value
       end
     end
   end
 
-  class OrderedCondition < Condition
-    def left
-      condition.left
-    end
+  class Comparison < Node
+    def to_proc(stream)
+      # memoize proc for a given stream
+      return @proc if @proc and @stream == stream
+      @stream = stream
 
-    def right
-      condition.right
-    end
+      left_value = left.value
+      right_value = (right.is_a?(Literal) || right.is_a?(Name)) ? right.value : right.value(stream)
 
-    def subcondition
+      # return a proc taking an object and comparing it to a literal value.
+      @proc = -> (obj) do
+        comparative_operator.operate obj[left_value], right_value
+      end
     end
   end
 
-  class UnorderedCondition < Condition
-    def left
-      name.value
-    end
 
-    def right
-      if literal
-        literal.value
-      else
-        value_expression
-      end
-    end
+  # subset operators
 
-    def subcondition
-      condition
+  class SubsetOperator < Node
+    def operate(stream)
+      child.operate stream
+    end
+  end
+
+  class FirstByOperator < SubsetOperator
+    def operate(stream)
+      quantity = integer_literal ? integer_literal.value : 1
+      stream.sort_by{|obj| obj[name.value]}[0, quantity]
+    end
+  end
+
+  class LastByOperator < SubsetOperator
+    def operate(stream)
+      quantity = (respond_to? :integer_literal) ? integer_literal.value : 1
+      stream.sort_by{|obj| obj[name.value]}.reverse[0, quantity]
     end
   end
 
 
   # reductive operators
 
-  class ReductiveOperator < Treetop::Runtime::SyntaxNode
+  class ReductiveOperator < Node
+    def operate(values)
+      child.operate values
+    end
   end
 
   class MaxOperator < ReductiveOperator
@@ -116,7 +159,10 @@ module PatternDescription
 
   # logical operators
 
-  class LogicalOperator < Treetop::Runtime::SyntaxNode
+  class LogicalOperator < Node
+    def operate(left, right)
+      child.operate left, right
+    end
   end
 
   class AndOperator < LogicalOperator
@@ -134,7 +180,10 @@ module PatternDescription
 
   # comparative operators
 
-  class ComparativeOperator < Treetop::Runtime::SyntaxNode
+  class ComparativeOperator < Node
+    def operate(left, right)
+      child.operate left, right
+    end
   end
 
   class DoesNotEqualOperator < ComparativeOperator
@@ -185,7 +234,7 @@ module PatternDescription
     end
   end
 
-  class EqualsOperator < PatternDescription::ComparativeOperator
+  class EqualsOperator < ComparativeOperator
     def operate(left, right)
       left == right
     end
@@ -194,12 +243,28 @@ module PatternDescription
 
   # literals
 
-  class Literal < Treetop::Runtime::SyntaxNode
+  class Literal < Node
+    def value
+      child.value
+    end
   end
 
   class ListLiteral < Literal
     def value
-      elements.map{|e| e.value}
+      # prune syntax nodes from tree
+      recursor = ->(node) do
+        node.elements.map{|e| 
+          if e.is_a? Literal
+            e
+          elsif e.elements
+            recursor.call e
+          else
+            []
+          end
+        }.flatten
+      end
+
+      recursor.call(self).map{|e| e.value}
     end
   end
 
@@ -236,7 +301,10 @@ module PatternDescription
 
   # name helpers
 
-  class Name < Treetop::Runtime::SyntaxNode
+  class Name < Node
+    def value
+      text_value.strip.to_sym
+    end
   end
 
 end

@@ -1,32 +1,51 @@
-grammar PatternDescription
+grammar PQL
   
-  # expressions and clauses
+  # expressions
 
   rule matching_expression
-    'WHERE' condition <MatchingExpression>
+    'MATCH' space selective_expression <MatchingExpression>
+  end
+
+  rule selective_expression
+    subset_operator 'WHERE' condition <SelectiveExpression> /
+    'WHERE' condition <SelectiveExpression>
   end
 
   rule value_expression
-    '(' reductive_operator? name matching_expression ')' <ValueExpression>
+    space? '(' reductive_operator name selective_expression ')' space? <ValueExpression> /
+    space? '(' name selective_expression ')' space? <ValueExpression>
   end
 
   rule condition
-    space? (ordered_condition / unordered_condition) space?
+    space? '(' condition ')' space? /
+    comparison (logical_operator (comparison / condition))* <Condition>
   end
 
-  rule ordered_condition
-    space? '(' condition ')' space? <OrderedCondition>
+  rule comparison
+    left:name comparative_operator right:(literal / value_expression / name) <Comparison>
   end
 
-  rule unordered_condition
-    name comparative_operator (literal / value_expression) (logical_operator condition)? <UnorderedCondition>
+
+  # subset operators
+
+  rule subset_operator
+    space? child:(first_by / last_by) space? <SubsetOperator>
+  end
+
+  rule first_by
+    'FIRST' space (integer_literal space)? 'BY' name <FirstByOperator>
+  end
+
+  rule last_by
+    'LAST' space 'BY' space name <LastByOperator> /
+    'LAST' space integer_literal space 'BY' name <LastByOperator>
   end
 
 
   # reductive operators
 
   rule reductive_operator
-    space? (max / min / count / sum) space?
+    space? child:(max / min / count / sum) space? <ReductiveOperator>
   end
 
   rule max
@@ -49,7 +68,7 @@ grammar PatternDescription
   # logical operators
 
   rule logical_operator
-    space? (and / or) space?
+    space? child:(and / or) space? <LogicalOperator>
   end
 
   rule and
@@ -65,13 +84,15 @@ grammar PatternDescription
 
   rule comparative_operator
     space?
-    (does_not_equal / is_greater_than_or_equal_to / is_less_than_or_equal_to
+    child:(does_not_equal / is_greater_than_or_equal_to / is_less_than_or_equal_to
       / matches / is_in / is_not_in / is_greater_than / is_less_than / equals)
     space?
+    <ComparativeOperator>
   end
 
   rule does_not_equal
-    '!=' <DoesNotEqualOperator>
+    '!=' <DoesNotEqualOperator> /
+    'IS NOT' <DoesNotEqualOperator>
   end
 
   rule is_greater_than_or_equal_to
@@ -91,7 +112,7 @@ grammar PatternDescription
   end
 
   rule is_not_in
-    'NOT IN' <IsNotInOperator>
+    'NOT' space 'IN' <IsNotInOperator>
   end
 
   rule is_greater_than
@@ -103,7 +124,8 @@ grammar PatternDescription
   end
 
   rule equals
-    '=' <EqualsOperator>
+    '=' <EqualsOperator> /
+    'IS' <EqualsOperator>
   end
 
 
@@ -111,9 +133,10 @@ grammar PatternDescription
 
   rule literal
     space?
-    (list_literal / string_literal / regular_expression_literal
+    child:(list_literal / string_literal / regular_expression_literal
       / float_literal / integer_literal / null_literal)
-    space?
+    space? 
+    <Literal>
   end
 
   rule list_literal
@@ -146,7 +169,7 @@ grammar PatternDescription
   # name and whitespace helpers
 
   rule name
-    space? ([a-zA-Z_]+ <Name>) space?
+    space? ([a-zA-Z_]+) space? <Name>
   end
 
   rule space

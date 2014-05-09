@@ -4,27 +4,47 @@ require File.join(File.expand_path(File.dirname(__FILE__)), 'node_extensions.rb'
 class Parser
   
   Treetop.load(File.join(File.expand_path(File.dirname(__FILE__)), 'grammar.treetop'))
-  @@parser = PatternDescriptionParser.new
+  @@parser = PQLParser.new
 
 
-  def self.parse(data)
-    tree = @@parser.parse data
+  def match(stream, expression)
+    self.parse(expression).match(stream)
+  end
+
+
+  def self.parse(expression)
+    tree = @@parser.parse expression
 
     if tree.nil?
-      raise Exception, "parse error at offset: #{@@parser.index}"
+      p = @@parser
+      raise Exception, "#{p.failure_reason} at line #{p.failure_line} column #{p.failure_column}"
     end
 
-    self.prune_tree tree
+    # self.prune_tree tree
 
     tree
   end
 
 
-  def self.print_tree(root_node, offset = 0)
-    puts "#{'  ' * offset} #{root_node.class.name} - #{root_node.interval} : '#{root_node.text_value}'" 
-    root_node.elements.each {|node| self.print_tree node, offset + 1 } if root_node.elements
+  def self.print_full_tree(root_node, offset = 0)
+    text = root_node.text_value.gsub("\n",'').split(' ').join(' ').strip
+    text = text[0, 100] + '...' if text.length > 100
+    puts "#{'  ' * offset} #{root_node.class.name} - '#{text}' : #{root_node.interval}"
+
+    root_node.elements.each {|node| self.print_full_tree node, offset + 1 } if root_node.elements
   end
 
+  def self.print_tree(root_node, offset = 0)
+    unless root_node.syntax_node?
+      text = root_node.text_value.gsub("\n",'').split(' ').join(' ').strip
+      text = text[0, 100] + '...' if text.length > 100
+      puts "#{'  ' * offset} #{root_node.class.name} - '#{text}' : #{root_node.interval}"
+
+      root_node.elements.each {|node| self.print_tree node, offset + 1 } if root_node.elements
+    else
+      root_node.elements.each {|node| self.print_tree node, offset } if root_node.elements
+    end
+  end
 
   private
 
