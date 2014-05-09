@@ -2,7 +2,7 @@ require File.join(File.expand_path(File.dirname(__FILE__)), '../lib/parser.rb')
 require 'test/unit'
 
 
-class TestMatch < Test::Unit::TestCase
+class TestMatching < Test::Unit::TestCase
   
   def test_match
     tree = Parser.parse 'MATCH LAST BY id WHERE type = "A" AND id < 4'

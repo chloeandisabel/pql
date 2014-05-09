@@ -111,7 +111,7 @@ module PQL
 
   class FirstByOperator < SubsetOperator
     def operate(stream)
-      quantity = integer_literal ? integer_literal.value : 1
+      quantity = (respond_to? :integer_literal) ? integer_literal.value : 1
       stream.sort_by{|obj| obj[name.value]}[0, quantity]
     end
   end
@@ -270,13 +270,13 @@ module PQL
 
   class StringLiteral < Literal
     def value
-      text_value[1..-2]
+      text_value[1...-1]
     end
   end
 
   class RegularExpressionLiteral < Literal
     def value
-      Regexp.new text_value[1..-2]
+      Regexp.new text_value[1...-1]
     end
   end
 
