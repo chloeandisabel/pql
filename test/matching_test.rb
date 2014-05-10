@@ -5,7 +5,7 @@ require 'test/unit'
 class TestMatching < Test::Unit::TestCase
   
   def test_match
-    tree = Parser.parse 'MATCH LAST BY id WHERE type = "A" AND id < 4'
+    tree = Parser.parse 'MATCH LAST BY id WHERE type IS "A" AND id < 4'
     stream = [
       {id: 1, type: 'A'},
       {id: 2, type: 'A'},
@@ -67,11 +67,11 @@ class TestMatching < Test::Unit::TestCase
   end
 
   def test_match_5
-    tree = Parser.parse(
-      'MATCH WHERE
+    tree = Parser.parse('
+      MATCH WHERE
         type IN ["A", "B", "C"] AND
-        id >= (MAX id WHERE type IS "D")'
-    )
+        id >= (MAX id WHERE type IS "D")
+    ')
     stream = [
       {id: 1, type: 'A'},
       {id: 2, type: 'B'},
@@ -89,14 +89,14 @@ class TestMatching < Test::Unit::TestCase
   end
 
   def test_match_6
-    tree = Parser.parse(
-      'MATCH WHERE
+    tree = Parser.parse('
+      MATCH WHERE
         type = "A" AND
         id IN (target WHERE
           type = "B" AND
           caused_by IN (id WHERE type = "C")
-        )'
-    )
+        )
+    ')
     stream = [
       {id: 1, type: 'A'},
       {id: 2, type: 'A'},
@@ -110,6 +110,32 @@ class TestMatching < Test::Unit::TestCase
 
     assert match.length == 1, 'expression should match 1 objects'
     assert match[0][:id] == 1, 'expression should match object with id 1'
+  end
+
+  def test_named_matches
+    tree = Parser.parse('
+      MATCH AS a FIRST BY id WHERE type IS "A";
+      MATCH AS b LAST BY id WHERE type IS "B";
+      MATCH AS c WHERE type IS "C";
+      MATCH AS d WHERE type IS "D";
+    ')
+    stream = [
+      {id: 1, type: "A"},
+      {id: 2, type: "A"},
+      {id: 3, type: "B"},
+      {id: 4, type: "B"},
+      {id: 5, type: "C"},
+      {id: 6, type: "C"},
+    ]
+
+    matches = tree.named_matches stream
+    p matches
+
+    assert matches.keys == [:a, :b, :c, :d]
+    assert matches[:a] == [{id: 1, type: "A"}] 
+    assert matches[:b] == [{id: 4, type: "B"}]
+    assert matches[:c] == [{id: 5, type: "C"}, {id: 6, type: "C"}]
+    assert matches[:d] == []
   end
 
 end

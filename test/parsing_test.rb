@@ -4,26 +4,29 @@ require 'test/unit'
 class TestParsing < Test::Unit::TestCase
 
   def test_parsing
+    # need to allow value expressions on left side of comparison
+    # need to make sure OF works in comparison w/ value expression, require it w/ subset operator
+    # allow referral to previous matches?
+
     expressions = [
       
-    'MATCH LAST 5 BY created_at WHERE type IS AwardCashbackedPaymentCreditEntry',
+    'MATCH LAST 5 BY created_at WHERE type IS AwardCashbackedPaymentCreditEntry;',
 
-    'MATCH WHERE type IS CheckoutItemSelected AND caused_by IS NULL',
+    'MATCH AS items WHERE type IS CheckoutItemSelected AND caused_by IS NULL',
 
-    'MATCH WHERE type IS CheckoutXPercentOffItemGeneralEntry AND label =~ /Spree/',
-
-    'MATCH WHERE type IS CheckoutItemSelected AND id NOT IN (applied_to WHERE type IS CheckoutItemRemoved)',
+    'MATCH AS discounts FIRST BY id WHERE type IS CheckoutXPercentOffItemGeneralEntry AND label =~ /Spree/;
+     MATCH AS items WHERE type IS CheckoutItemSelected AND id NOT IN (applied_to WHERE type IS CheckoutItemRemoved);',
 
     'MATCH WHERE
       type IN ["CheckoutNetItemTotalEntry", "CheckoutPromotionApplied"] AND
-      created_at >= (MAX created_at WHERE type IS CheckoutSummaryRequested)',
+      created_at >= (MAX created_at WHERE type IS CheckoutSummaryRequested);',
 
     'MATCH FIRST BY id WHERE
       type = "CheckoutItemRemoved" AND
       applied_to IN (id WHERE
         type = "CheckoutItemSelected" AND
         caused_by IN (id WHERE type = "CheckoutGiftSelected")
-      )',
+      );',
 
     'MATCH WHERE
       type = "CheckoutItemRemoved" AND
@@ -33,7 +36,7 @@ class TestParsing < Test::Unit::TestCase
           type = "CheckoutGiftSelected" AND
           caused_by IN (id WHERE type = "CheckoutGiftEarned")
         )
-      )',
+      );',
 
     'MATCH WHERE
       type IN [
@@ -62,7 +65,7 @@ class TestParsing < Test::Unit::TestCase
           type = "PageViewed" AND
           url =~ /\/orders\/R[0-9]+\/checkout_confirmation/
         )
-      )'
+      );'
     ]
 
     expressions.each do |expression|

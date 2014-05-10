@@ -1,9 +1,17 @@
 grammar PQL
   
+  # block
+  
+  rule block
+    space? (matching_expression space? ';' space?)+ <Block> /
+    space? matching_expression space? <Block>
+  end
+
+
   # expressions
 
   rule matching_expression
-    'MATCH' space selective_expression <MatchingExpression>
+    'MATCH' (space 'AS' name / space) selective_expression <MatchingExpression>
   end
 
   rule selective_expression
@@ -12,7 +20,7 @@ grammar PQL
   end
 
   rule value_expression
-    space? '(' reductive_operator name selective_expression ')' space? <ValueExpression> /
+    space? '(' reductive_operator name (space 'OF' space)? selective_expression ')' space? <ValueExpression> /
     space? '(' name selective_expression ')' space? <ValueExpression>
   end
 

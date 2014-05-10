@@ -3,12 +3,26 @@ class Treetop::Runtime::SyntaxNode
     self.class.name == 'Treetop::Runtime::SyntaxNode'
   end
 
+  # return an array of all descendants of the node
   def descendants
     if elements
       elements.map{|e| [e] + e.descendants}.flatten
     else
       []
     end
+  end
+
+  # return an array of all descendants of the node terminating at the given node types
+  def descendants_to(*node_types)
+    elements.map{|e| 
+      if node_types.include? e.class
+        e
+      elsif e.elements
+        e.descendants_to *node_types
+      else
+        []
+      end
+    }.flatten
   end
 end
 
@@ -21,11 +35,47 @@ module PQL
   end
 
 
+  # block
+
+  class Block < Node
+
+    # return the single match from the first statement in the block
+    def match(stream)
+      expression = descendants_to(MatchingExpression).first
+
+      if expression
+        expression.match stream
+      else
+        nil
+      end
+    end
+
+    # return all matches in the block
+    def matches(stream)
+      descendants_to(MatchingExpression).map{|e| e.match stream}
+    end
+
+    # return all named matches as a hash
+    def named_matches(stream)
+      descendants_to(MatchingExpression)
+        .select{|e| e.respond_to? :name}
+        .reduce({}){|memo, e|
+          memo[e.name.value] = e.match stream
+          memo
+        }
+    end
+
+  end
+
   # expressions and clauses
 
   class MatchingExpression < Node
     def match(stream)
       selective_expression.select stream
+    end
+
+    def name
+      descendants_to(Name, SelectiveExpression).find{|e| e.is_a? Name}
     end
   end
 
@@ -51,24 +101,12 @@ module PQL
       return @proc if @proc and @stream == stream
       @stream = stream
 
-      # prune syntax nodes from tree
-      recursor = ->(node) do
-        node.elements.map{|e| 
-          if [Condition, Comparison, LogicalOperator].include? e.class
-            e
-          elsif e.elements
-            recursor.call e
-          else
-            []
-          end
-        }.flatten
-      end
-
       # return a proc taking an object and returning a boolean indicating whether
       # or not that object meets the condition
       @proc = -> (obj) do
-        nodes = recursor.call(self)
-        value = nodes.shift.to_proc(stream).call obj
+        nodes = descendants_to Condition, Comparison, LogicalOperator
+
+        left_value = nodes.shift.to_proc(stream).call obj
 
         while nodes.length > 1
           operator, right = nodes[0..1]
@@ -76,10 +114,10 @@ module PQL
 
           right_value = right.to_proc(stream).call obj
 
-          value = operator.operate value, right_value
+          left_value = operator.operate left_value, right_value
         end
         
-        value
+        left_value
       end
     end
   end
@@ -252,19 +290,7 @@ module PQL
   class ListLiteral < Literal
     def value
       # prune syntax nodes from tree
-      recursor = ->(node) do
-        node.elements.map{|e| 
-          if e.is_a? Literal
-            e
-          elsif e.elements
-            recursor.call e
-          else
-            []
-          end
-        }.flatten
-      end
-
-      recursor.call(self).map{|e| e.value}
+      descendants_to(Literal).map{|e| e.value}
     end
   end
 
