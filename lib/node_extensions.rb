@@ -27,6 +27,7 @@ class Treetop::Runtime::SyntaxNode
 end
 
 
+
 module PQL
 
   # root class for nodes
@@ -35,61 +36,88 @@ module PQL
   end
 
 
+  # class representing set of matches between a block of expressions and a stream of events
+
+  class MatchSet
+
+    # accepts 
+    def initialize(expression_results)
+      @expression_results = expression_results
+    end
+
+    attr_reader :expression_results
+
+    # any matching expressions from the block that fail to match will have returned nil.
+    # return true if all expressions have matched, false otherwise 
+    def matches?
+      @expression_results.all?{|result| result[:matches]}
+    end
+
+    # the cardinality is the length of the cartesian product of all match sets
+    def cardinality
+      matches? ? @expression_results.reduce(1){|memo, result| memo * result[:matches].length} : 0
+    end
+
+    def named_matches
+      return [] unless matches?
+
+      # convert sets of expression matches to arrays of hashes {name: [events..]},
+      # find the cartesian product of each expression's set of distinct matches, and merge
+      # hashes to produce complete sets of named matches
+
+      head, *tail = @expression_results.map{|result|
+        result[:matches].map{|match|
+          result[:name] ? Hash[result[:name], match] : {}
+        }.compact
+      }
+
+      head.product(*tail).map{|matches| matches.reduce(&:merge)}
+    end
+
+    def each_match(&block)
+      named_matches.each{|match| block.call match}
+    end
+  end
+
+
+
   # block
 
   class Block < Node
 
-    # return the single match from the first statement in the block
-    def match(stream)
-      expression = descendants_to(MatchingExpression).first
-
-      if expression
-        expression.match stream
-      else
-        nil
-      end
-    end
-
-    # return all matches in the block
-    def matches(stream)
-      descendants_to(MatchingExpression).map{|e| e.match stream}
-    end
-
-    # return all named matches as a hash
-    def named_matches(stream)
-      descendants_to(MatchingExpression)
-        .select{|e| e.respond_to? :name}
-        .reduce({}){|memo, e|
-          memo[e.name.value] = e.match stream
-          memo
-        }
+    # apply the block to a stream
+    def apply(stream)
+      MatchSet.new descendants_to(MatchingExpression).map{|expression|
+        {name: expression.match_name, matches: expression.match(stream)}
+      }
     end
 
   end
+
 
   # expressions and clauses
 
   class MatchingExpression < Node
     def match(stream)
-      selective_expression.select stream
+      cardinality_operator.apply selective_expression.select(stream)
     end
 
-    def name
-      descendants_to(Name, SelectiveExpression).find{|e| e.is_a? Name}
+    def match_name
+      respond_to?(:name) ? name.value : nil
     end
   end
 
   class SelectiveExpression < Node
     def select(stream)
-      matches = stream.select &condition.to_proc(stream)
-      matches = subset_operator.operate matches if respond_to? :subset_operator
-      matches
+      stream.select &condition.to_proc(stream)
     end
   end
 
   class ValueExpression < Node
     def value(stream)
-      value = selective_expression.select(stream).map{|obj| obj[:"#{name.value}"]}
+      events = selective_expression.select(stream)
+      events = subset_operator.operate events if respond_to? :subset_operator
+      value = events.map{|event| event[:"#{name.value}"]}
       value = reductive_operator.operate value if respond_to? :reductive_operator
       value
     end
@@ -97,22 +125,18 @@ module PQL
 
   class Condition < Node
     def to_proc(stream)
-      # memoize proc for a given stream
-      return @proc if @proc and @stream == stream
-      @stream = stream
-
-      # return a proc taking an object and returning a boolean indicating whether
-      # or not that object meets the condition
-      @proc = -> (obj) do
+      # return a proc taking an event and returning a boolean indicating whether
+      # or not that event meets the condition
+      -> (event) do
         nodes = descendants_to Condition, Comparison, LogicalOperator
 
-        left_value = nodes.shift.to_proc(stream).call obj
+        left_value = nodes.shift.compare stream, event
 
         while nodes.length > 1
           operator, right = nodes[0..1]
           nodes = nodes[2..-1]
 
-          right_value = right.to_proc(stream).call obj
+          right_value = right.compare stream, event
 
           left_value = operator.operate left_value, right_value
         end
@@ -123,25 +147,53 @@ module PQL
   end
 
   class Comparison < Node
-    def to_proc(stream)
-      # memoize proc for a given stream
-      return @proc if @proc and @stream == stream
-      @stream = stream
-
-      left_value = left.value
-      right_value = (right.is_a?(Literal) || right.is_a?(Name)) ? right.value : right.value(stream)
-
-      # return a proc taking an object and comparing it to a literal value.
-      @proc = -> (obj) do
-        comparative_operator.operate obj[left_value], right_value
+    def compare(stream, event)
+      left_value, right_value = [left, right].map do |node|
+        if node.is_a? Literal
+          node.value
+        elsif node.is_a? ValueExpression
+          node.value(stream)
+        elsif node.is_a? Name
+          event[node.value]
+        end
       end
+
+      comparative_operator.operate left_value, right_value
     end
   end
 
 
-  # subset operators
+  # cardinality operators
 
-  class SubsetOperator < Node
+  class CardinalityOperator < Node
+    def apply(stream)
+      child.apply stream
+    end
+  end
+
+  class NoneOperator < CardinalityOperator
+    def apply(selected)
+      selected.none? ? [] : nil
+    end
+  end
+
+  class EachOperator < CardinalityOperator
+    def apply(selected)
+      selected.zip
+    end
+  end
+
+  class AllOperator < CardinalityOperator
+    def apply(selected)
+      selected.any? ? [selected] : nil
+    end
+  end
+
+  class SubsetOperator < CardinalityOperator
+    def apply(selected)
+      selected.any? ? [operate(selected)] : []
+    end
+
     def operate(stream)
       child.operate stream
     end
@@ -150,14 +202,14 @@ module PQL
   class FirstByOperator < SubsetOperator
     def operate(stream)
       quantity = (respond_to? :integer_literal) ? integer_literal.value : 1
-      stream.sort_by{|obj| obj[name.value]}[0, quantity]
+      stream.sort_by{|event| event[name.value]}[0, quantity]
     end
   end
 
   class LastByOperator < SubsetOperator
     def operate(stream)
       quantity = (respond_to? :integer_literal) ? integer_literal.value : 1
-      stream.sort_by{|obj| obj[name.value]}.reverse[0, quantity]
+      stream.sort_by{|event| event[name.value]}.reverse[0, quantity]
     end
   end
 
@@ -260,6 +312,30 @@ module PQL
     end
   end
 
+  class IncludesOperator < ComparativeOperator
+    def operate(left, right)
+      left.include? right
+    end
+  end
+
+  class DoesNotIncludeOperator < ComparativeOperator
+    def operate(left, right)
+      !left.include? right
+    end
+  end
+
+  class IntersectsOperator < ComparativeOperator
+    def operate(left, right)
+      (left & right).any?
+    end
+  end
+
+  class DisjointOperator < ComparativeOperator
+    def operate(left, right)
+      (left & right).none?
+    end
+  end
+
   class IsGreaterThanOperator < ComparativeOperator
     def operate(left, right)
       left > right
@@ -325,7 +401,7 @@ module PQL
   end
 
 
-  # name helpers
+  # name
 
   class Name < Node
     def value

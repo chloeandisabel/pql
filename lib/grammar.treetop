@@ -3,57 +3,75 @@ grammar PQL
   # block
   
   rule block
-    space? (matching_expression space? ';' space?)+ <Block> /
-    space? matching_expression space? <Block>
+    s? (matching_expression s? ';' s?)* (matching_expression s?)? <Block>
   end
 
 
   # expressions
 
   rule matching_expression
-    'MATCH' (space 'AS' name / space) selective_expression <MatchingExpression>
-  end
-
-  rule selective_expression
-    subset_operator 'WHERE' condition <SelectiveExpression> /
-    'WHERE' condition <SelectiveExpression>
+    'MATCH' s cardinality_operator s selective_expression <MatchingExpression> /
+    'MATCH' s cardinality_operator s 'AS' s name s selective_expression <MatchingExpression>
   end
 
   rule value_expression
-    space? '(' reductive_operator name (space 'OF' space)? selective_expression ')' space? <ValueExpression> /
-    space? '(' name selective_expression ')' space? <ValueExpression>
+    '(' s? name s selective_expression s? ')' <ValueExpression> /
+    '(' s? reductive_operator s name s selective_expression s? ')' <ValueExpression> /
+    '(' s? name s 'OF' s subset_operator s selective_expression s? ')' <ValueExpression> /
+    '(' s? reductive_operator s name s 'OF' s subset_operator s selective_expression s? ')' <ValueExpression>
+  end
+
+  rule selective_expression
+    'WHERE' s condition <SelectiveExpression>
   end
 
   rule condition
-    space? '(' condition ')' space? /
-    comparison (logical_operator (comparison / condition))* <Condition>
+    '(' s? condition s? ')' /
+    comparison (s logical_operator s (comparison / condition))* <Condition>
   end
 
   rule comparison
-    left:name comparative_operator right:(literal / value_expression / name) <Comparison>
+    left:(literal / value_expression / name) s comparative_operator s right:(literal / value_expression / name) <Comparison>
   end
 
 
-  # subset operators
+  # cardinality operators
+
+  rule cardinality_operator
+    child:(none / each / all / first_by / last_by) <CardinalityOperator>
+  end
 
   rule subset_operator
-    space? child:(first_by / last_by) space? <SubsetOperator>
+    child:(first_by / last_by) <SubsetOperator>
+  end
+
+  rule none
+    'NONE' <NoneOperator>
+  end
+
+  rule each
+    'EACH' <EachOperator>
+  end
+
+  rule all
+    'ALL' <AllOperator>
   end
 
   rule first_by
-    'FIRST' space (integer_literal space)? 'BY' name <FirstByOperator>
+    'FIRST' s 'BY' s name <FirstByOperator> /
+    'FIRST' s integer_literal s 'BY' s name <FirstByOperator>
   end
 
   rule last_by
-    'LAST' space 'BY' space name <LastByOperator> /
-    'LAST' space integer_literal space 'BY' name <LastByOperator>
+    'LAST' s 'BY' s name <LastByOperator> /
+    'LAST' s integer_literal s 'BY' s name <LastByOperator>
   end
 
 
   # reductive operators
 
   rule reductive_operator
-    space? child:(max / min / count / sum) space? <ReductiveOperator>
+    child:(max / min / count / sum) <ReductiveOperator>
   end
 
   rule max
@@ -76,7 +94,7 @@ grammar PQL
   # logical operators
 
   rule logical_operator
-    space? child:(and / or) space? <LogicalOperator>
+    child:(and / or) <LogicalOperator>
   end
 
   rule and
@@ -91,11 +109,10 @@ grammar PQL
   # comparative operators
 
   rule comparative_operator
-    space?
-    child:(does_not_equal / is_greater_than_or_equal_to / is_less_than_or_equal_to
-      / matches / is_in / is_not_in / is_greater_than / is_less_than / equals)
-    space?
-    <ComparativeOperator>
+    child:(does_not_equal / is_greater_than_or_equal_to
+      / is_less_than_or_equal_to / matches / includes / does_not_include
+      / is_in / is_not_in / intersects / disjoint / is_greater_than
+      / is_less_than / equals) <ComparativeOperator>
   end
 
   rule does_not_equal
@@ -115,12 +132,28 @@ grammar PQL
     '=~' <MatchesOperator>
   end
 
+  rule includes
+    'INCLUDES' <IncludesOperator>
+  end
+
+  rule does_not_include
+    'DOES' s 'NOT' s 'INCLUDE' <DoesNotIncludeOperator>
+  end
+
   rule is_in
     'IN' <IsInOperator>
   end
 
   rule is_not_in
-    'NOT' space 'IN' <IsNotInOperator>
+    'NOT' s 'IN' <IsNotInOperator>
+  end
+
+  rule intersects
+    'INTERSECTS' <IntersectsOperator>
+  end
+
+  rule disjoint
+    'DISJOINT' <DisjointOperator>
   end
 
   rule is_greater_than
@@ -140,16 +173,13 @@ grammar PQL
   # literals
 
   rule literal
-    space?
     child:(list_literal / string_literal / regular_expression_literal
-      / float_literal / integer_literal / null_literal)
-    space? 
-    <Literal>
+      / float_literal / integer_literal / null_literal) <Literal>
   end
 
   rule list_literal
-    '[' space? literal space? (',' space? literal)* space? ']' <ListLiteral> /
-    '[' space? ']' <ListLiteral>
+    '[' s? literal s? (',' s? literal)* s? ']' <ListLiteral> /
+    '[' s? ']' <ListLiteral>
   end
 
   rule string_literal
@@ -162,7 +192,7 @@ grammar PQL
   end
 
   rule float_literal
-    ('+' / '-')? [0-9]+ '.' [0-9]+ <FloatLiteral>
+    ('+' / '-')? [0-9]+ '.' [0-9]+ <FloatLiteral> 
   end
 
   rule integer_literal
@@ -177,10 +207,10 @@ grammar PQL
   # name and whitespace helpers
 
   rule name
-    space? ([a-zA-Z_]+) space? <Name>
+    [a-zA-Z_]+ <Name>
   end
 
-  rule space
+  rule s
     [\s]+
   end
 

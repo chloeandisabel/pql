@@ -18,17 +18,16 @@ class Parser
   end
 
 
-  def self.print_tree(root_node, offset = 0)
+  def self.print(root_node, offset = 0)
     unless root_node.syntax_node?
       text = root_node.text_value.gsub("\n",'').split(' ').join(' ').strip
       text = text[0, 100] + '...' if text.length > 100
       puts "#{'  ' * offset} #{root_node.class.name} - '#{text}' : #{root_node.interval}"
 
-      root_node.elements.each {|node| self.print_tree node, offset + 1 } if root_node.elements
+      root_node.elements.each {|node| self.print node, offset + 1 } if root_node.elements
     else
-      root_node.elements.each {|node| self.print_tree node, offset } if root_node.elements
+      root_node.elements.each {|node| self.print node, offset } if root_node.elements
     end
   end
-
 
 end

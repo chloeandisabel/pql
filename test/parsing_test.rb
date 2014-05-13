@@ -4,20 +4,18 @@ require 'test/unit'
 class TestParsing < Test::Unit::TestCase
 
   def test_parsing
-    # need to allow value expressions on left side of comparison
-    # need to make sure OF works in comparison w/ value expression, require it w/ subset operator
-    # allow referral to previous matches?
-
     expressions = [
       
     'MATCH LAST 5 BY created_at WHERE type IS AwardCashbackedPaymentCreditEntry;',
 
-    'MATCH AS items WHERE type IS CheckoutItemSelected AND caused_by IS NULL',
+    'MATCH ALL AS items WHERE type IS CheckoutItemSelected AND caused_by IS NULL',
 
-    'MATCH AS discounts FIRST BY id WHERE type IS CheckoutXPercentOffItemGeneralEntry AND label =~ /Spree/;
-     MATCH AS items WHERE type IS CheckoutItemSelected AND id NOT IN (applied_to WHERE type IS CheckoutItemRemoved);',
+    'MATCH FIRST BY id AS discount WHERE type IS CheckoutXPercentOffItemGeneralEntry AND label =~ /Spree/;
+     MATCH EACH AS item WHERE type IS CheckoutItemSelected AND id NOT IN (applied_to WHERE type IS CheckoutItemRemoved)',
 
-    'MATCH WHERE
+    'MATCH NONE WHERE type IS "CreditEarned" AND amount > (SUM amount OF LAST 3 BY id WHERE type IS PartialCreditEarned)',
+
+    'MATCH EACH WHERE
       type IN ["CheckoutNetItemTotalEntry", "CheckoutPromotionApplied"] AND
       created_at >= (MAX created_at WHERE type IS CheckoutSummaryRequested);',
 
@@ -28,7 +26,7 @@ class TestParsing < Test::Unit::TestCase
         caused_by IN (id WHERE type = "CheckoutGiftSelected")
       );',
 
-    'MATCH WHERE
+    'MATCH ALL WHERE
       type = "CheckoutItemRemoved" AND
       applied_to IN (id WHERE
         type = "CheckoutItemSelected" AND
@@ -36,9 +34,9 @@ class TestParsing < Test::Unit::TestCase
           type = "CheckoutGiftSelected" AND
           caused_by IN (id WHERE type = "CheckoutGiftEarned")
         )
-      );',
+      )',
 
-    'MATCH WHERE
+    'MATCH EACH WHERE
       type IN [
         "CheckoutXPercentOffOrderCouponEntry",
         "CheckoutXDollarOffOrderCouponEntry",
