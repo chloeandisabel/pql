@@ -65,17 +65,17 @@ Values can be references to the value of a column on the event currently being c
 - **Subject Event Columns:** subject event columns refer to values on the subject event.  For example, in the condition `WHERE type IS 'PageViewed'`, `type` is a subject event column and refers to the value of the column named `type` on the subject event.  The condition will be true for subject event `{type: 'PageViewed'}`.  Column names can consist of lower and uppercase letters and underscores.
 
 - **Literals:**  literals express a value directly without reference to the subject event or other  events in the stream.
-  - **Integer Literals:** `1`, `12`, or `9001`
-  - **Floating Point Literals:** `1.1`, `3.14`, or `99.999`
-  - **String Literals:** delimited by single or double quotes. `"Etzion & Niblett"` or `'Oprah Winfrey'`
-  - **Regular Expression Literals:** `/^abcd/` or `/[0-9]+/`
-  - **List Literals:** lists consist of any literals seperated by commas and delimited by square brackets. `[1, 2, 3]` or `['David', 'Luckham']`
+    - **Integer Literals:** `1`, `12`, or `9001`
+    - **Floating Point Literals:** `1.1`, `3.14`, or `99.999`
+    - **String Literals:** delimited by single or double quotes. `"Etzion & Niblett"` or `'Oprah Winfrey'`
+    - **Regular Expression Literals:** `/^abcd/` or `/[0-9]+/`
+    - **List Literals:** lists consist of any literals seperated by commas and delimited by square brackets. `[1, 2, 3]` or `['David', 'Luckham']`
 
 - **Value Expressions:** value expressions look similar to matching expressions, but are used to compare the subject event to other events in the stream.  An example expression would look like `(MAX time WHERE type IS 'LoginAttemptFailed')`. Value expressions are always surrounded by `()` and consist of the following parts in order.
-  - **Reductive Operator:** reductive operators are optional, and reduce the list of selected values to a single value.  Available operators are `MAX`, `MIN`, `COUNT`, and `SUM`.
-  - **Column Name:** specifies the column of the selected events which values should be taken from 
-  - **Subset Operator:** the subset operator is optional, and allows the expression to select only a subset of the events matching its conditions.  Available subset operators are `FIRST BY column`, `FIRST n BY column`, `LAST BY column`, and `LAST n BY column`.
-  - **Conditions:** the value expression is concluded with the `WHERE` keyword, and a set of conditions which may themselves use value expressions and more conditions. 
+    - **Reductive Operator:** reductive operators are optional, and reduce the list of selected values to a single value.  Available operators are `MAX`, `MIN`, `COUNT`, and `SUM`.
+    - **Column Name:** specifies the column of the selected events which values should be taken from 
+    - **Subset Operator:** the subset operator is optional, and allows the expression to select only a subset of the events matching its conditions.  Available subset operators are `FIRST BY column`, `FIRST n BY column`, `LAST BY column`, and `LAST n BY column`.
+    - **Conditions:** the value expression is concluded with the `WHERE` keyword, and a set of conditions which may themselves use value expressions and more conditions. 
 
 #### Comparison Operators
 
