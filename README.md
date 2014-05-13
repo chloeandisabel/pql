@@ -113,10 +113,10 @@ Blocks match a stream ONLY if all of their constituent matching expressions succ
 
 For example, If the preceding block was applied to following stream, each expression would match 2 times for a cardinality of 2 and the block would match four times for a cardinality of four.
 
-    {id: 1, type: 'OrderItemSelected},
-    {id: 2, type: 'OrderItemSelected},
-    {id: 3, type: 'OrderLevelDiscountApplied},
-    {id: 4, type: 'OrderLevelDiscountApplied}
+    {id: 1, type: 'OrderItemSelected'},
+    {id: 2, type: 'OrderItemSelected'},
+    {id: 3, type: 'OrderLevelDiscountApplied'},
+    {id: 4, type: 'OrderLevelDiscountApplied'}
 
 The matches here would be the sets of events w/ ids (1, 3), (1, 4), (2, 3), and (2, 4).
 
