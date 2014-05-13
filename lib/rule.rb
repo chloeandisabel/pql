@@ -30,5 +30,4 @@ class Rule
       end
     end
   end
-
 end

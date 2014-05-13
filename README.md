@@ -109,7 +109,7 @@ A PQL block consists of any number of matching expressions seperated by semicolo
 
 ### Matching and Cardinality
 
-Blocks match a stream ONLY if all of their constituent matching expressions successfully match the stream at least one time.  A block's matches are the cartesian product of the matches from each individual expression.  This makes the cardinality of a block the product of the cardinality of each of its constituent matching expressions.
+Blocks match a stream ONLY if all of their constituent matching expressions successfully match the stream at least one time.  A block's matches are the cartesian product of the matches from each individual expression.  This gives the block a cardinality equal to the product of the cardinality of each of its constituent matching expressions.
 
 For example, If the preceding block was applied to following stream, each expression would match 2 times for a cardinality of 2, and the block would match four times for a cardinality of four.
 
@@ -137,7 +137,7 @@ class PerItemDiscountAccountingRule
     
     action do
       order_level_discount_applied_to_item(
-        applied_to: item.id,
+        sku: item.sku,
         promotion_id: discount.promotion_id, 
         amount: discount.percent * item.amount
       )
