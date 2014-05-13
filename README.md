@@ -128,18 +128,19 @@ Rules
 
 Rules define a pattern using a block of PQL, and then accept a block of ruby code to run for each successful match 
 
-    class PerItemDiscountAccountingRule
-        pql <<-PQL
-          MATCH EACH AS item WHERE type IS 'OrderItemSelected'; 
-          MATCH EACH AS discount WHERE type IS 'OrderLevelDiscountApplied';
-        PQL
-        
-        action do
-          order_level_discount_applied_to_item(
-            applied_to: item.id,
-            promotion_id: discount.promotion_id, 
-            amount: discount.percent * item.amount
-          )
-        end
+```ruby
+class PerItemDiscountAccountingRule
+    pql <<-PQL
+      MATCH EACH AS item WHERE type IS 'OrderItemSelected'; 
+      MATCH EACH AS discount WHERE type IS 'OrderLevelDiscountApplied';
+    PQL
+    
+    action do
+      order_level_discount_applied_to_item(
+        applied_to: item.id,
+        promotion_id: discount.promotion_id, 
+        amount: discount.percent * item.amount
+      )
     end
-
+end
+```
