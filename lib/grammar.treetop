@@ -25,20 +25,31 @@ grammar PQL
     'WHERE' s condition <SelectiveExpression>
   end
 
+
+  # conditions
+
   rule condition
     '(' s? condition s? ')' /
-    comparison (s logical_operator s (comparison / condition))* <Condition>
+    atomic_condition (s logical_operator s (atomic_condition / condition))* <Condition>
   end
 
-  rule comparison
-    left:(literal / value_expression / name) s comparative_operator s right:(literal / value_expression / name) <Comparison>
+  rule atomic_condition
+    child:(typical_condition / comparative_condition) <AtomicCondition>
+  end
+
+  rule typical_condition
+    'TYPE' s string_literal <TypicalCondition>
+  end
+
+  rule comparative_condition
+    left:(literal / value_expression / reference) s comparative_operator s right:(literal / value_expression / reference) <ComparativeCondition>
   end
 
 
   # cardinality operators
 
   rule cardinality_operator
-    child:(none / each / all / first_by / last_by) <CardinalityOperator>
+    child:(none / each / all / any / first_by / last_by) <CardinalityOperator>
   end
 
   rule subset_operator
@@ -57,6 +68,10 @@ grammar PQL
     'ALL' <AllOperator>
   end
 
+  rule any
+    'ANY' <AnyOperator>
+  end
+
   rule first_by
     'FIRST' s 'BY' s name <FirstByOperator> /
     'FIRST' s integer_literal s 'BY' s name <FirstByOperator>
@@ -71,7 +86,7 @@ grammar PQL
   # reductive operators
 
   rule reductive_operator
-    child:(max / min / count / sum) <ReductiveOperator>
+    child:(max / min / count / sum / union) <ReductiveOperator>
   end
 
   rule max
@@ -88,6 +103,10 @@ grammar PQL
 
   rule sum
     'SUM' <SumOperator>
+  end
+
+  rule union
+    'UNION' <UnionOperator>
   end
 
 
@@ -205,6 +224,10 @@ grammar PQL
 
 
   # name and whitespace helpers
+
+  rule reference
+    escapes:('^'*) name <Reference>
+  end
 
   rule name
     [a-zA-Z_]+ <Name>

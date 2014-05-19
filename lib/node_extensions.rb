@@ -1,3 +1,7 @@
+require 'treetop'
+require File.join(File.expand_path(File.dirname(__FILE__)), 'event.rb')
+
+
 class Treetop::Runtime::SyntaxNode
   def syntax_node?
     self.class.name == 'Treetop::Runtime::SyntaxNode'
@@ -55,20 +59,34 @@ module PQL
 
     # the cardinality is the length of the cartesian product of all match sets
     def cardinality
-      matches? ? @expression_results.reduce(1){|memo, result| memo * result[:matches].length} : 0
+      return 0 unless matches?
+
+      @expression_results.reduce(1){|memo, result|
+        result[:matches].any? ? memo * result[:matches].length : memo
+      }
     end
 
+    # return flat array of all matching events
+    def all_matches
+      return [] unless matches?
+      @expression_results.reduce([]){|memo, result| memo + result[:matches]}.flatten
+    end
+
+
+    # convert sets of expression matches to arrays of hashes {name: [events..]},
+    # find the cartesian product of each expression's set of distinct matches, and merge
+    # hashes to produce complete sets of named matches
     def named_matches
       return [] unless matches?
 
-      # convert sets of expression matches to arrays of hashes {name: [events..]},
-      # find the cartesian product of each expression's set of distinct matches, and merge
-      # hashes to produce complete sets of named matches
-
       head, *tail = @expression_results.map{|result|
-        result[:matches].map{|match|
-          result[:name] ? Hash[result[:name], match] : {}
-        }.compact
+        if result[:matches].any?
+          result[:matches].map{|match|
+            result[:name] ? Hash[result[:name], match] : {}
+          }.compact
+        else
+          [{}]
+        end
       }
 
       head.product(*tail).map{|matches| matches.reduce(&:merge)}
@@ -99,7 +117,7 @@ module PQL
 
   class MatchingExpression < Node
     def match(stream)
-      cardinality_operator.apply selective_expression.select(stream)
+      cardinality_operator.apply selective_expression.select(stream, [])
     end
 
     def match_name
@@ -108,14 +126,14 @@ module PQL
   end
 
   class SelectiveExpression < Node
-    def select(stream)
-      stream.select &condition.to_proc(stream)
+    def select(stream, context)
+      stream.select &condition.to_proc(stream, context)
     end
   end
 
   class ValueExpression < Node
-    def value(stream)
-      events = selective_expression.select(stream)
+    def value(stream, context)
+      events = selective_expression.select(stream, context)
       events = subset_operator.operate events if respond_to? :subset_operator
       value = events.map{|event| event[:"#{name.value}"]}
       value = reductive_operator.operate value if respond_to? :reductive_operator
@@ -123,20 +141,27 @@ module PQL
     end
   end
 
+
+  # conditions
+
   class Condition < Node
-    def to_proc(stream)
+    def to_proc(stream, context)
       # return a proc taking an event and returning a boolean indicating whether
       # or not that event meets the condition
-      -> (event) do
-        nodes = descendants_to Condition, Comparison, LogicalOperator
 
-        left_value = nodes.shift.compare stream, event
+      -> (event) do
+        nodes = descendants_to Condition, AtomicCondition, LogicalOperator
+        event_context = [event] + context
+
+        left_value = nodes.shift.compare stream, event_context
 
         while nodes.length > 1
           operator, right = nodes[0..1]
           nodes = nodes[2..-1]
 
-          right_value = right.compare stream, event
+          return false if left_value == false and operator.is_a?(AndOperator)
+          
+          right_value = right.compare stream, event_context
 
           left_value = operator.operate left_value, right_value
         end
@@ -146,15 +171,26 @@ module PQL
     end
   end
 
-  class Comparison < Node
-    def compare(stream, event)
+  class AtomicCondition < Node
+    def compare(stream, context)
+      child.compare stream, context
+    end
+  end
+
+  class TypicalCondition < AtomicCondition
+    def compare(stream, context)
+    end
+  end
+
+  class ComparativeCondition < AtomicCondition
+    def compare(stream, context)
       left_value, right_value = [left, right].map do |node|
         if node.is_a? Literal
           node.value
         elsif node.is_a? ValueExpression
-          node.value(stream)
-        elsif node.is_a? Name
-          event[node.value]
+          node.value(stream, context)
+        elsif node.is_a? Reference
+          context[node.index][node.value]
         end
       end
 
@@ -186,6 +222,12 @@ module PQL
   class AllOperator < CardinalityOperator
     def apply(selected)
       selected.any? ? [selected] : nil
+    end
+  end
+
+  class AnyOperator < CardinalityOperator
+    def apply(selected)
+      selected.any? ? [selected] : []
     end
   end
 
@@ -224,13 +266,13 @@ module PQL
 
   class MaxOperator < ReductiveOperator
     def operate(values)
-      values.max
+      values.any? ? values.max : -Float::INFINITY
     end
   end
 
   class MinOperator < ReductiveOperator
     def operate(values)
-      values.min
+      values.any? ? values.min : Float::INFINITY
     end
   end
 
@@ -243,6 +285,12 @@ module PQL
   class SumOperator < ReductiveOperator
     def operate(values)
       values.reduce(0){|sum, value| sum + value}
+    end
+  end
+
+  class UnionOperator < ReductiveOperator
+    def operate(values)
+      values.reduce([]){|union, value| union | value}
     end
   end
 
@@ -284,12 +332,14 @@ module PQL
 
   class IsGreaterThanOrEqualToOperator < ComparativeOperator
     def operate(left, right)
+      return false unless left.respond_to? :>=
       left >= right
     end
   end
 
   class IsLessThanOrEqualToOperator < ComparativeOperator
     def operate(left, right)
+      return false unless left.respond_to? :<=
       left <= right
     end
   end
@@ -338,12 +388,14 @@ module PQL
 
   class IsGreaterThanOperator < ComparativeOperator
     def operate(left, right)
+      return false unless left.respond_to? :>
       left > right
     end
   end
 
   class IsLessThanOperator < ComparativeOperator
     def operate(left, right)
+      return false unless left.respond_to? :<
       left < right
     end
   end
@@ -401,7 +453,17 @@ module PQL
   end
 
 
-  # name
+  # name and reference
+
+  class Reference < Node
+    def value
+      name.value
+    end
+
+    def index
+      escapes.text_value.length
+    end
+  end
 
   class Name < Node
     def value

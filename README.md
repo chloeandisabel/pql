@@ -32,13 +32,15 @@ matching expressions always begin with the word `MATCH`
 
 Matching expressions can match the same stream of events multiple times - an expression's *cardinality* with respect to a stream is the number of distinct sets of events it matches in the stream.
 
-In the given example `ALL` will match once, selecting the all events all of the events with type 'PageViewed' and giving the expression a cardinality of one.
+In the given example `ALL` will match once, selecting all of the events with type 'PageViewed' and giving the expression a cardinality of one.
 
 The available cardinality operators are:
 
   - `ALL` matches one time selecting all of the events meeting the conditions
   - `EACH` matches once for each fact in the stream, selecting one fact w/ each match.
-  - `NONE` - matches once and selects no events.  It matches only if no events in the stream meet the given conditions.   
+  - `NONE` - matches once and selects no events.  It matches only if no events in the
+  - `ANY` always matches once, whether or not any events in the stream meet the conditions.  If any events do meet the conditions, it selects them, otherwise it selects no events.
+stream meet the given conditions.   
   - `FIRST BY column` matches one time selecting the single event with the smallest value for 'column'
   - `FIRST n BY column` matches one time selecting n events with the smallest values for 'column'
   - `LAST BY column` matches one time selecting the single event with the largest value for 'column'
@@ -54,8 +56,10 @@ A naming expression consists of the `AS` keyword followed by a match name.  Matc
 
 ### Conditions
 
-The set of conditions for a matching expression begins with the `WHERE` keyword, and is followed by any number of comparisons ordered using `()` and combined using the boolean operators `AND` and `OR`.  To find matching events, an expression checks each fact in the stream individually against its conditions - selecting the events for which the conditions are true.
+The set of conditions for a matching expression begins with the `WHERE` keyword, and is followed by any number of conditions ordered using `()` and combined using the boolean operators `AND` and `OR`.  To find matching events, an expression checks each fact in the stream individually against its conditions - selecting the events for which the conditions are true.
 
+
+### comparisons
 The most basic condition follows the format `left value` `comparison operator` `right value`
 
 #### Values
@@ -70,12 +74,13 @@ Values can be references to the value of a column on the event currently being c
     - **String Literals:** delimited by single or double quotes. `"Etzion & Niblett"` or `'Oprah Winfrey'`
     - **Regular Expression Literals:** `/^abcd/` or `/[0-9]+/`
     - **List Literals:** lists consist of any literals seperated by commas and delimited by square brackets. `[1, 2, 3]` or `['David', 'Luckham']`
+    - **Time Delta Literals:** an integral number of days, hours, minutes, or seconds ago.  `2 DAYS AGO` or `10 SECONDS AGO`
 
 - **Value Expressions:** value expressions look similar to matching expressions, but are used to compare the subject event to other events in the stream.  An example expression would look like `(MAX time WHERE type IS 'LoginAttemptFailed')`. Value expressions are always surrounded by `()` and consist of the following parts in order.
-    - **Reductive Operator:** reductive operators are optional, and reduce the list of selected values to a single value.  Available operators are `MAX`, `MIN`, `COUNT`, and `SUM`.
+    - **Reductive Operator:** reductive operators are optional, and reduce the list of selected values to a single value.  Available operators are `MAX`, `MIN`, `COUNT`, `SUM`, and `UNION`.
     - **Column Name:** specifies the column of the selected events which values should be taken from 
     - **Subset Operator:** the subset operator is optional, and allows the expression to select only a subset of the events matching its conditions.  Available subset operators are `FIRST BY column`, `FIRST n BY column`, `LAST BY column`, and `LAST n BY column`.
-    - **Conditions:** the value expression is concluded with the `WHERE` keyword, and a set of conditions which may themselves use value expressions and more conditions. 
+    - **Conditions:** the value expression is concluded with the `WHERE` keyword, and a set of conditions which may themselves use value expressions and more conditions.  Within a value expression, event column names prefixed with one or more `^` charachters refer to events one level up from the current expression.  Multiple `^` charachters can be chained to break out of multiple nested value expressions.
 
 #### Comparison Operators
 
@@ -95,6 +100,14 @@ The available comparison operators are:
 - `INTERSECTS` accepts lists on both the left and right sides, true if any value is a member of both lists.
 - `DISJOINT` accepts lists on both the left and right sides, true if no value is a member of both lists.
 
+### Type Conditions
+
+Type conditions are aware of the event taxonomy we define and allow us to select facts of a certain type without listing the names of all subtypes.  They consist of the `TYPE` keyword and a string literal naming the type.
+
+The following example uses a type condition to select each event with type 'PageViewed':
+
+    MATCH EACH AS event WHERE TYPE 'OrderEvent'
+ 
 
 ---
 
@@ -129,8 +142,8 @@ Rules
 Rules define a pattern using a block of PQL, and then accept a block of ruby code to run for each successful match 
 
 ```ruby
-class PerItemDiscountAccountingRule
-    pql <<-PQL
+class PerItemDiscountAccountingRule < Rule
+    pattern <<-PQL
       MATCH EACH AS item WHERE type IS 'OrderItemSelected'; 
       MATCH EACH AS discount WHERE type IS 'OrderLevelDiscountApplied';
     PQL

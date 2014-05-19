@@ -63,14 +63,35 @@ class TestParsing < Test::Unit::TestCase
           type = "PageViewed" AND
           url =~ /\/orders\/R[0-9]+\/checkout_confirmation/
         )
-      );'
+      );',
+
+      'MATCH LAST BY created_at AS item_total WHERE TYPE IS "CheckoutNetItemTotalEntry";
+       MATCH LAST BY created_at AS shipping_total WHERE TYPE IS "CheckoutNetShippingTotalEntry";
+       MATCH LAST BY created_at AS tax_total WHERE TYPE IS "CheckoutTaxTotalEntry";
+       MATCH EACH AS credit WHERE
+         TYPE IN [
+           "AwardAdminPaymentCreditEntry",
+           "AwardMerchandiserPaymentCreditEntry",
+           "AwardHostessPaymentCreditEntry",
+           "AwardLegacyPaymentCreditEntry"
+         ]
+         AND amount > (SUM amount WHERE
+           TYPE IN [
+             "RedeemAdminPaymentCreditEntry",
+             "RedeemCashbackedPaymentCreditEntry",
+             "RedeemMerchandiserPaymentCreditEntry",
+             "RedeemHostessPaymentCreditEntry",
+             "RedeemLegacyPaymentCreditEntry"
+           ]
+           AND applied_to = ^id
+         );'
     ]
 
     expressions.each do |expression|
       puts "\n"
       puts expression;
       puts "\n"
-      Parser.print_tree(Parser.parse(expression))
+      PQL::Parser.print(PQL::Parser.parse(expression))
       puts "\n"
     end
   end

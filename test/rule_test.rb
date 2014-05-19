@@ -16,7 +16,7 @@ class ExampleRule < Rule
     MATCH ALL AS b WHERE type IS "B";
   PQL
 
-  action do
+  action do |t|
     @@counter += 1
   end
 end
@@ -34,7 +34,7 @@ class TestRule < Test::Unit::TestCase
       {id: 1, type: 'A'},
       {id: 2, type: 'A'},
       {id: 3, type: 'B'},
-      {id: 3, type: 'B'}
+      {id: 4, type: 'B'}
     ]
 
     rule.apply stream

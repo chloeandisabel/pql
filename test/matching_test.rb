@@ -13,11 +13,11 @@ class TestMatching < Test::Unit::TestCase
       {id: 3, type: 'A'}
     ]
 
-    match_set = Parser.parse(pql).apply(stream)
+    application = PQL::Parser.parse(pql).apply(stream)
 
-    assert match_set.matches? == true, 'expression should match stream'
-    assert match_set.cardinality == 1, 'expression should match one time'
-    assert match_set.named_matches[0] == {a: [{id: 1, type: 'A'}, {id: 2, type: 'A'}]}, 'expression should match 2 events'
+    assert application.matches? == true, 'expression should match stream'
+    assert application.cardinality == 1, 'expression should match one time'
+    assert application.named_matches[0] == {a: [{id: 1, type: 'A'}, {id: 2, type: 'A'}]}, 'expression should match 2 events'
   end
 
   def test_match_each
@@ -29,12 +29,12 @@ class TestMatching < Test::Unit::TestCase
       {id: 3, type: 'A'}
     ]
 
-    match_set = Parser.parse(pql).apply(stream)
+    application = PQL::Parser.parse(pql).apply(stream)
 
-    assert match_set.matches? == true, 'expression should match stream'
-    assert match_set.cardinality == 2, 'expression should match two times'
-    assert match_set.named_matches[0] == {a: [{id: 1, type: 'A'}]}, 'expression should match 1 event'
-    assert match_set.named_matches[1] == {a: [{id: 2, type: 'A'}]}, 'expression should match 1 event'
+    assert application.matches? == true, 'expression should match stream'
+    assert application.cardinality == 2, 'expression should match two times'
+    assert application.named_matches[0] == {a: [{id: 1, type: 'A'}]}, 'expression should match 1 event'
+    assert application.named_matches[1] == {a: [{id: 2, type: 'A'}]}, 'expression should match 1 event'
   end
 
   def test_match_cardinality
@@ -48,12 +48,12 @@ class TestMatching < Test::Unit::TestCase
       {id: 4, type: 'B'}
     ]
 
-    match_set = Parser.parse(pql).apply(stream)
+    application = PQL::Parser.parse(pql).apply(stream)
 
-    assert match_set.matches? == true, 'expression should match stream'
-    assert match_set.cardinality == 2, 'expression should match two times'
-    assert match_set.named_matches[0] == {a: [{id: 1, type: 'A'}, {id: 2, type: 'A'}], b: [{id: 3, type: 'B'}]}, 'expression should match 3 events'
-    assert match_set.named_matches[1] == {a: [{id: 1, type: 'A'}, {id: 2, type: 'A'}], b: [{id: 4, type: 'B'}]}, 'expression should match 3 events'
+    assert application.matches? == true, 'expression should match stream'
+    assert application.cardinality == 2, 'expression should match two times'
+    assert application.named_matches[0] == {a: [{id: 1, type: 'A'}, {id: 2, type: 'A'}], b: [{id: 3, type: 'B'}]}, 'expression should match 3 events'
+    assert application.named_matches[1] == {a: [{id: 1, type: 'A'}, {id: 2, type: 'A'}], b: [{id: 4, type: 'B'}]}, 'expression should match 3 events'
   end
 
   def test_match_cardinality_2
@@ -67,14 +67,14 @@ class TestMatching < Test::Unit::TestCase
       {id: 4, type: 'B'}
     ]
 
-    match_set = Parser.parse(pql).apply(stream)
+    application = PQL::Parser.parse(pql).apply(stream)
     
-    assert match_set.matches? == true, 'expression should match stream'
-    assert match_set.cardinality == 4, 'expression should match four times'
-    assert match_set.named_matches[0] == {a: [{id: 1, type: 'A'}], b: [{id: 3, type: 'B'}]}, 'expression should match 2 events'
-    assert match_set.named_matches[1] == {a: [{id: 1, type: 'A'}], b: [{id: 4, type: 'B'}]}, 'expression should match 2 events'
-    assert match_set.named_matches[2] == {a: [{id: 2, type: 'A'}], b: [{id: 3, type: 'B'}]}, 'expression should match 2 events'
-    assert match_set.named_matches[3] == {a: [{id: 2, type: 'A'}], b: [{id: 4, type: 'B'}]}, 'expression should match 2 events'
+    assert application.matches? == true, 'expression should match stream'
+    assert application.cardinality == 4, 'expression should match four times'
+    assert application.named_matches[0] == {a: [{id: 1, type: 'A'}], b: [{id: 3, type: 'B'}]}, 'expression should match 2 events'
+    assert application.named_matches[1] == {a: [{id: 1, type: 'A'}], b: [{id: 4, type: 'B'}]}, 'expression should match 2 events'
+    assert application.named_matches[2] == {a: [{id: 2, type: 'A'}], b: [{id: 3, type: 'B'}]}, 'expression should match 2 events'
+    assert application.named_matches[3] == {a: [{id: 2, type: 'A'}], b: [{id: 4, type: 'B'}]}, 'expression should match 2 events'
   end
 
   def test_non_match
@@ -86,11 +86,11 @@ class TestMatching < Test::Unit::TestCase
       {id: 3, type: 'B'}
     ]
 
-    match_set = Parser.parse(pql).apply(stream)
+    application = PQL::Parser.parse(pql).apply(stream)
 
-    assert match_set.matches? == false, 'expression should not match stream'
-    assert match_set.cardinality == 0, 'expression match 0 times'
-    assert match_set.named_matches == [], 'should match 0 events'
+    assert application.matches? == false, 'expression should not match stream'
+    assert application.cardinality == 0, 'expression match 0 times'
+    assert application.named_matches == [], 'should match 0 events'
   end
 
   def test_non_match_2
@@ -104,11 +104,11 @@ class TestMatching < Test::Unit::TestCase
       {id: 4, type: 'B'}
     ]
 
-    match_set = Parser.parse(pql).apply(stream)
+    application = PQL::Parser.parse(pql).apply(stream)
 
-    assert match_set.matches? == false, 'expression should not match stream'
-    assert match_set.cardinality == 0, 'expression match 0 times'
-    assert match_set.named_matches == [], 'should match 0 events'
+    assert application.matches? == false, 'expression should not match stream'
+    assert application.cardinality == 0, 'expression match 0 times'
+    assert application.named_matches == [], 'should match 0 events'
   end
 
   def test_match_none
@@ -122,13 +122,44 @@ class TestMatching < Test::Unit::TestCase
       {id: 4, type: 'B'}
     ]
 
-    match_set = Parser.parse(pql).apply(stream)
+    application = PQL::Parser.parse(pql).apply(stream)
 
-    assert match_set.matches? == false, 'expression should not match stream'
-    assert match_set.cardinality == 0, 'expression match 0 times'
-    assert match_set.named_matches == [], 'should match 0 events'
+    assert application.matches? == false, 'expression should not match stream'
+    assert application.cardinality == 0, 'expression match 0 times'
+    assert application.named_matches == [], 'should match 0 events'
   end
 
+  def test_match_any
+    pql = 'MATCH ANY AS a WHERE type IS "A" AND id < 3'
+    
+    stream = [
+      {id: 1, type: 'B'},
+      {id: 2, type: 'B'},
+      {id: 3, type: 'B'}
+    ]
+
+    application = PQL::Parser.parse(pql).apply(stream)
+
+    assert application.matches? == true, 'expression should match stream'
+    assert application.cardinality == 1, 'expression should match one time'
+    assert application.named_matches[0] == {}, 'expression should match no events'
+  end
+
+  def test_match_any_2
+    pql = 'MATCH ANY AS a WHERE type IS "A" AND id < 3'
+    
+    stream = [
+      {id: 1, type: 'B'},
+      {id: 2, type: 'A'},
+      {id: 3, type: 'B'}
+    ]
+
+    application = PQL::Parser.parse(pql).apply(stream)
+
+    assert application.matches? == true, 'expression should match stream'
+    assert application.cardinality == 1, 'expression should match one time'
+    assert application.named_matches[0] == {a: [{id: 2, type: 'A'}]}, 'expression should match one event'
+  end
 
   def test_unnamed_match
     pql = 'MATCH LAST BY id WHERE type = "A"'
@@ -138,11 +169,11 @@ class TestMatching < Test::Unit::TestCase
       {id: 2, type: 'A'}
     ]
 
-    match_set = Parser.parse(pql).apply(stream)
+    application = PQL::Parser.parse(pql).apply(stream)
     
-    assert match_set.matches? == true, 'expression should match stream'
-    assert match_set.cardinality == 1, 'expression should match one time'
-    assert match_set.named_matches == [{}], 'expression should return an empty object as named match'
+    assert application.matches? == true, 'expression should match stream'
+    assert application.cardinality == 1, 'expression should match one time'
+    assert application.named_matches == [{}], 'expression should return an empty object as named match'
   end
 
   def test_match
@@ -155,11 +186,11 @@ class TestMatching < Test::Unit::TestCase
       {id: 4, type: 'A'}
     ]
 
-    match_set = Parser.parse(pql).apply(stream)
+    application = PQL::Parser.parse(pql).apply(stream)
 
-    assert match_set.matches? == true, 'expression should match stream'
-    assert match_set.cardinality == 1, 'expression should match one time'
-    assert match_set.named_matches == [{a: [{id: 2, type: 'A'}]}], 'expression should match object with id 2'
+    assert application.matches? == true, 'expression should match stream'
+    assert application.cardinality == 1, 'expression should match one time'
+    assert application.named_matches == [{a: [{id: 2, type: 'A'}]}], 'expression should match object with id 2'
   end
 
   def test_match_2
@@ -172,11 +203,11 @@ class TestMatching < Test::Unit::TestCase
       {id: 4, type: 'A'}
     ]
 
-    match_set = Parser.parse(pql).apply(stream)
+    application = PQL::Parser.parse(pql).apply(stream)
 
-    assert match_set.matches? == true, 'expression should match stream'
-    assert match_set.cardinality == 1, 'expression should match one time'
-    assert match_set.named_matches == [{a: [{id: 3, type: 'A'}, {id: 2, type: 'A'}]}], 'expression should match 3 events'
+    assert application.matches? == true, 'expression should match stream'
+    assert application.cardinality == 1, 'expression should match one time'
+    assert application.named_matches == [{a: [{id: 3, type: 'A'}, {id: 2, type: 'A'}]}], 'expression should match 3 events'
   end
 
   def test_match_3
@@ -190,11 +221,11 @@ class TestMatching < Test::Unit::TestCase
       {id: 4, applied_to: 3, type: 'B'}
     ]
 
-    match_set = Parser.parse(pql).apply(stream)
+    application = PQL::Parser.parse(pql).apply(stream)
     
-    assert match_set.matches? == true, 'expression should match stream'
-    assert match_set.cardinality == 1, 'expression should match one time'
-    assert match_set.named_matches == [{a: [{id: 2, type: 'A'}]}], 'expression should match event w/ id 2'
+    assert application.matches? == true, 'expression should match stream'
+    assert application.cardinality == 1, 'expression should match one time'
+    assert application.named_matches == [{a: [{id: 2, type: 'A'}]}], 'expression should match event w/ id 2'
   end
 
   def test_match_4
@@ -213,11 +244,11 @@ class TestMatching < Test::Unit::TestCase
       {id: 6, type: 'B'}
     ]
 
-    match_set = Parser.parse(pql).apply(stream)
+    application = PQL::Parser.parse(pql).apply(stream)
 
-    assert match_set.matches? == true, 'expression should match stream'
-    assert match_set.cardinality == 1, 'expression should match one time'
-    assert match_set.named_matches == [{abc: [{id: 5, type: 'A'}, {id: 6, type: 'B'}]}], 'expression should match events w/ id 5 and 6'
+    assert application.matches? == true, 'expression should match stream'
+    assert application.cardinality == 1, 'expression should match one time'
+    assert application.named_matches == [{abc: [{id: 5, type: 'A'}, {id: 6, type: 'B'}]}], 'expression should match events w/ id 5 and 6'
   end
 
   def test_match_5
@@ -239,11 +270,11 @@ class TestMatching < Test::Unit::TestCase
       {id: 6, type: 'D'}
     ]
 
-    match_set = Parser.parse(pql).apply(stream)
+    application = PQL::Parser.parse(pql).apply(stream)
 
-    assert match_set.matches? == true, 'expression should match stream'
-    assert match_set.cardinality == 1, 'expression should match one time'
-    assert match_set.named_matches == [{a: [{id: 1, type: 'A'}]}], 'expression should match object with id 1'
+    assert application.matches? == true, 'expression should match stream'
+    assert application.cardinality == 1, 'expression should match one time'
+    assert application.named_matches == [{a: [{id: 1, type: 'A'}]}], 'expression should match object with id 1'
   end
 
   def test_match_6
@@ -257,11 +288,11 @@ class TestMatching < Test::Unit::TestCase
       {id: 5, type: 'B', target: 3},
     ]
 
-    match_set = Parser.parse(pql).apply(stream)
+    application = PQL::Parser.parse(pql).apply(stream)
 
-    assert match_set.matches? == true, 'expression should match stream'
-    assert match_set.cardinality == 1, 'expression should match one time'
-    assert match_set.named_matches == [{a: [{id: 2, type: 'A'}]}], 'expression should match object with id 2'
+    assert application.matches? == true, 'expression should match stream'
+    assert application.cardinality == 1, 'expression should match one time'
+    assert application.named_matches == [{a: [{id: 2, type: 'A'}]}], 'expression should match object with id 2'
   end
 
   def test_named_matches
@@ -280,16 +311,82 @@ class TestMatching < Test::Unit::TestCase
       {id: 6, type: "C"},
     ]
 
-    match_set = Parser.parse(pql).apply(stream)
+    application = PQL::Parser.parse(pql).apply(stream)
 
-    assert match_set.matches? == true, 'expression should match stream'
-    assert match_set.cardinality == 1, 'expression should match one time'
-    assert(match_set.named_matches == [{
+    assert application.matches? == true, 'expression should match stream'
+    assert application.cardinality == 1, 'expression should match one time'
+    assert(application.named_matches == [{
       a: [{id: 1, type: 'A'}],
       b: [{id: 4, type: 'B'}],
       c: [{id: 5, type: 'C'}, {id: 6, type: 'C'}]
     }], 'expression should match object with id 2')
 
+  end
+
+  def test_references
+    pql = '
+      MATCH EACH AS credit WHERE
+        type IS "CreditAwarded"
+        AND amount > (SUM amount WHERE
+          type IS "CreditRedeemed"
+          AND applied_to = ^id
+        );
+    '
+    stream = [
+      {id: 1, type: "CreditAwarded", amount: 2.0},
+      {id: 2, type: "CreditAwarded", amount: 2.0},
+      {id: 3, type: "CreditAwarded", amount: 2.0},
+      {id: 4, type: "CreditRedeemed", amount: 1.0, applied_to: 1},
+      {id: 5, type: "CreditRedeemed", amount: 1.0, applied_to: 1},
+      {id: 6, type: "CreditRedeemed", amount: 1.0, applied_to: 2}
+    ]
+
+    application = PQL::Parser.parse(pql).apply(stream)
+
+    assert application.matches? == true, 'expression should match stream'
+    assert application.cardinality == 2, 'expression should match two times'
+    assert(application.named_matches == [
+      {credit: [{id: 2, type: 'CreditAwarded', amount: 2.0}]},
+      {credit: [{id: 3, type: 'CreditAwarded', amount: 2.0}]}
+    ], 'expression should match twice selecting credits w/ ids 2 and 3')
+  end
+
+  def test_multi_level_references
+    pql = '
+      MATCH EACH AS credit WHERE
+        type IS "CreditAwarded"
+        AND amount > (SUM amount WHERE
+          type IS "CreditRedeemed"
+          AND credit_id = ^credit_id
+          AND (COUNT id WHERE
+            type IS "CreditRedemptionCancelled"
+            AND redemption_id = ^id
+            AND credit_id = ^^credit_id
+          ) = 0
+        );
+    '
+    stream = [
+      {id: 1, type: "CreditAwarded", amount: 2.0, credit_id: 1},
+      {id: 2, type: "CreditAwarded", amount: 2.0, credit_id: 2},
+      {id: 4, type: "CreditRedeemed", amount: 1.0, credit_id: 1},
+      {id: 5, type: "CreditRedeemed", amount: 1.0, credit_id: 1},
+      {id: 6, type: "CreditRedeemed", amount: 1.0, credit_id: 2},
+      {id: 7, type: "CreditRedeemed", amount: 1.0, credit_id: 2},
+
+      # should not be counted because credit id is wrong
+      {id: 8, type: "CreditRedemptionCancelled", redemption_id: 4, credit_id: 3},
+      
+      # should be counted and allow the fact w/ id 2 to match as credit
+      {id: 9, type: "CreditRedemptionCancelled", redemption_id: 6, credit_id: 2}
+    ]
+
+    application = PQL::Parser.parse(pql).apply(stream)
+
+    assert application.matches? == true, 'expression should match stream'
+    assert application.cardinality == 1, 'expression should match one time'
+    assert(application.named_matches == [
+      {credit: [{id: 2, type: 'CreditAwarded', amount: 2.0, credit_id: 2}]},
+    ], 'expression should match twice selecting credits w/ ids 2 and 3')
   end
 
 end
