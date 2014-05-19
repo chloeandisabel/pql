@@ -219,6 +219,11 @@ module PQL
     end
   end
 
+  class EachByOperator < CardinalityOperator
+    def apply(selected)
+    end
+  end
+
   class AllOperator < CardinalityOperator
     def apply(selected)
       selected.any? ? [selected] : nil

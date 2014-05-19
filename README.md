@@ -60,6 +60,7 @@ The set of conditions for a matching expression begins with the `WHERE` keyword,
 
 
 ### comparisons
+
 The most basic condition follows the format `left value` `comparison operator` `right value`
 
 #### Values
@@ -80,7 +81,7 @@ Values can be references to the value of a column on the event currently being c
     - **Reductive Operator:** reductive operators are optional, and reduce the list of selected values to a single value.  Available operators are `MAX`, `MIN`, `COUNT`, `SUM`, and `UNION`.
     - **Column Name:** specifies the column of the selected events which values should be taken from 
     - **Subset Operator:** the subset operator is optional, and allows the expression to select only a subset of the events matching its conditions.  Available subset operators are `FIRST BY column`, `FIRST n BY column`, `LAST BY column`, and `LAST n BY column`.
-    - **Conditions:** the value expression is concluded with the `WHERE` keyword, and a set of conditions which may themselves use value expressions and more conditions.  Within a value expression, event column names prefixed with one or more `^` charachters refer to events one level up from the current expression.  Multiple `^` charachters can be chained to break out of multiple nested value expressions.
+    - **Conditions:** the value expression is concluded with the `WHERE` keyword, and a set of conditions which may themselves use value expressions and more conditions.  Within a value expression, event column names prefixed with the `^` charachter refer to values on events one level up from the current expression.  Multiple `^` charachters can be chained to break out of multiple nested value expressions.
 
 #### Comparison Operators
 
@@ -104,7 +105,7 @@ The available comparison operators are:
 
 Type conditions are aware of the event taxonomy we define and allow us to select facts of a certain type without listing the names of all subtypes.  They consist of the `TYPE` keyword and a string literal naming the type.
 
-The following example uses a type condition to select each event with type 'PageViewed':
+The following example uses a type condition to select each event with type 'OrderEvent':
 
     MATCH EACH AS event WHERE TYPE 'OrderEvent'
  
@@ -148,8 +149,8 @@ class PerItemDiscountAccountingRule < Rule
       MATCH EACH AS discount WHERE type IS 'OrderLevelDiscountApplied';
     PQL
     
-    action do
-      order_level_discount_applied_to_item(
+    action do |t|
+      t.order_level_discount_applied_to_item(
         sku: item.sku,
         promotion_id: discount.promotion_id, 
         amount: discount.percent * item.amount
