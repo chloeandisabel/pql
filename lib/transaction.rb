@@ -3,16 +3,18 @@ require File.join(File.expand_path(File.dirname(__FILE__)), 'event.rb')
 # transaction context
 
 class Transaction
+
   def initialize(context, description, cause = [])
     @context = context
     @description = description
     @cause = cause
     @events = []
+    @id = 
   end
 
   attr_reader :events
 
-  def persist!
+  def to_sql
   end
 
   def method_missing(name, *args)
@@ -22,4 +24,5 @@ class Transaction
       super
     end
   end
+
 end

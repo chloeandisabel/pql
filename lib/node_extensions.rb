@@ -18,7 +18,7 @@ class Treetop::Runtime::SyntaxNode
 
   # return an array of all descendants of the node terminating at the given node types
   def descendants_to(*node_types)
-    elements.map{|e| 
+    elements.map{|e|
       if node_types.include? e.class
         e
       elsif e.elements
@@ -35,7 +35,7 @@ end
 module PQL
 
   # root class for nodes
-  
+
   class Node < Treetop::Runtime::SyntaxNode
   end
 
@@ -44,7 +44,7 @@ module PQL
 
   class MatchSet
 
-    # accepts 
+    # accepts
     def initialize(expression_results)
       @expression_results = expression_results
     end
@@ -52,7 +52,7 @@ module PQL
     attr_reader :expression_results
 
     # any matching expressions from the block that fail to match will have returned nil.
-    # return true if all expressions have matched, false otherwise 
+    # return true if all expressions have matched, false otherwise
     def matches?
       @expression_results.all?{|result| result[:matches]}
     end
@@ -93,7 +93,7 @@ module PQL
     end
 
     def each_match(&block)
-      named_matches.each{|match| block.call match}
+      named_matches.map{|match| block.call match}
     end
   end
 
@@ -160,12 +160,12 @@ module PQL
           nodes = nodes[2..-1]
 
           return false if left_value == false and operator.is_a?(AndOperator)
-          
+
           right_value = right.compare stream, event_context
 
           left_value = operator.operate left_value, right_value
         end
-        
+
         left_value
       end
     end
@@ -207,6 +207,18 @@ module PQL
     end
   end
 
+  class CardinalityOperator < Node
+    def apply(stream)
+      child.apply stream
+    end
+  end
+
+  class SimpleCardinalityOperator < CardinalityOperator
+  end
+
+  class ComplexCardinalityOperator < CardinalityOperator
+  end
+
   class NoneOperator < CardinalityOperator
     def apply(selected)
       selected.none? ? [] : nil
@@ -233,6 +245,11 @@ module PQL
   class AnyOperator < CardinalityOperator
     def apply(selected)
       selected.any? ? [selected] : []
+    end
+  end
+
+  class GroupedByOperator < SubsetOperator
+    def operate(stream)
     end
   end
 
@@ -448,6 +465,18 @@ module PQL
   class IntegerLiteral < Literal
     def value
       text_value.to_i
+    end
+  end
+
+  class NowLiteral < Literal
+    def value
+      Time.now
+    end
+  end
+
+  class TimeDeltaLiteral < Literal
+    def value
+
     end
   end
 

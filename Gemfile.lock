@@ -4,9 +4,11 @@ GEM
     polyglot (0.3.4)
     treetop (1.5.3)
       polyglot (~> 0.3)
+    uuidtools (2.1.4)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
   treetop
+  uuidtools

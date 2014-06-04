@@ -2,6 +2,7 @@ class Event
 
   def initialize(attrs)
     @attrs = attrs
+    @attrs[:id] ||= 
   end
 
   def [](key)
@@ -11,6 +12,19 @@ class Event
   def types
     Taxonomy.lookup @attrs[:type]
   end
+
+  def has_type?(type)
+    types.include? type
+  end
+
+  def causes?(event)
+
+  end
+
+  def caused_by?(event)
+  
+  end
+
 
 
   class Taxonomy

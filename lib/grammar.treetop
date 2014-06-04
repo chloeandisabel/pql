@@ -1,7 +1,7 @@
 grammar PQL
-  
+
   # block
-  
+
   rule block
     s? (matching_expression s? ';' s?)* (matching_expression s?)? <Block>
   end
@@ -49,7 +49,16 @@ grammar PQL
   # cardinality operators
 
   rule cardinality_operator
-    child:(none / each / all / any / first_by / last_by) <CardinalityOperator>
+    simple_cardinality_operator <CardinalityOperator> /
+    complex_cardinalty_operator+ <CardinalityOperator>
+  end
+
+  rule simple_cardinality_operator
+    child:(none / each / all / any) <SimpleCardinalityOperator>
+  end
+
+  rule complex_cardinality_operator
+    child:(first_by / last_by / grouped_by) <ComplexCardinalityOperator>
   end
 
   rule subset_operator
@@ -70,6 +79,10 @@ grammar PQL
 
   rule any
     'ANY' <AnyOperator>
+  end
+
+  rule grouped_by
+    'GROUPED' s 'BY' s name <GroupedByOperator>
   end
 
   rule first_by
@@ -203,7 +216,7 @@ grammar PQL
 
   rule string_literal
     '"' ('\"' / !'"' .)* '"' <StringLiteral> /
-    "'" ("\'" / !"'" .)* "'" <StringLiteral> 
+    "'" ("\'" / !"'" .)* "'" <StringLiteral>
   end
 
   rule regular_expression_literal
@@ -211,17 +224,25 @@ grammar PQL
   end
 
   rule float_literal
-    ('+' / '-')? [0-9]+ '.' [0-9]+ <FloatLiteral> 
+    ('+' / '-')? [0-9]+ '.' [0-9]+ <FloatLiteral>
   end
 
   rule integer_literal
     ('+' / '-')? [0-9]+ <IntegerLiteral>
   end
 
+  rule now_literal
+    'NOW' <NowLiteral>
+  end
+
+  rule time_delta_literal
+    value:'1' s unit:('DAY' / 'HOUR' / 'MINUTE' / 'SECOND') s 'AGO' <TimeDeltaLiteral> /
+    value:([02-9][0-9]*) s unit:('DAYS' / 'HOURS' / 'MINUTES' / 'SECONDS') s 'AGO' <TimeDeltaLiteral>
+  end
+
   rule null_literal
     'NULL' <NullLiteral>
   end
-
 
   # name and whitespace helpers
 

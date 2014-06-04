@@ -71,20 +71,14 @@ class Rule
 
   def apply(stream)
     application = pattern.apply stream
+    context = context_for stream
 
     application.each_match do |matches|
-      t = Transaction.new(
-        context_for(stream),
-        application.all_matches.map{|e| e[:id]},
-        description
-      )
-
-      ActionContext.new(@methods, matches).instance_exec t, &action
-      
-      t.persist!
-
-      stream += t.events
-    end 
+      cause = matches.map{|e| e[:id]}
+      transaction = Transaction.new context, description, cause
+      ActionContext.new(@methods, matches).instance_exec transaction, &action
+      transaction
+    end
   end
 
 
