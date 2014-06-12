@@ -17,6 +17,7 @@ class Treetop::Runtime::SyntaxNode
   end
 
   # return an array of all descendants of the node terminating at the given node types
+  # depth first in left to right order
   def descendants_to(*node_types)
     elements.map{|e|
       if node_types.include? e.class
@@ -27,6 +28,19 @@ class Treetop::Runtime::SyntaxNode
         []
       end
     }.flatten
+  end
+
+  # print 
+  def display(level=0)
+    puts self.class.name
+    
+    elements and elements.each do |e|
+      level.times do
+        print '  '
+      end
+
+      e.display(level + 1)
+    end
   end
 end
 
@@ -79,6 +93,8 @@ module PQL
     def named_matches
       return [] unless matches?
 
+      p "NAMED MATCHES RUNNING"
+
       head, *tail = @expression_results.map{|result|
         if result[:matches].any?
           result[:matches].map{|match|
@@ -89,7 +105,20 @@ module PQL
         end
       }
 
-      head.product(*tail).map{|matches| matches.reduce(&:merge)}
+      p head
+      p tail
+      p head.product(*tail)
+
+      p "reducing each match"
+
+      r = head.product(*tail).map{|matches| 
+        matches.reduce(&:merge)
+      }
+
+      p "DONE WITH NAMED MATCHES"
+
+
+      r
     end
 
     def each_match(&block)
@@ -117,7 +146,14 @@ module PQL
 
   class MatchingExpression < Node
     def match(stream)
-      cardinality_operator.apply selective_expression.select(stream, [])
+      puts "\nMatchingExpression#match running"
+      p self.text_value
+      p stream
+
+      matches = filtering_expression.apply(stream, [])
+      matches = selective_expression.apply matches if respond_to? :selective_expression
+
+      matches
     end
 
     def match_name
@@ -125,19 +161,19 @@ module PQL
     end
   end
 
-  class SelectiveExpression < Node
-    def select(stream, context)
-      stream.select &condition.to_proc(stream, context)
-    end
-  end
-
   class ValueExpression < Node
     def value(stream, context)
-      events = selective_expression.select(stream, context)
-      events = subset_operator.operate events if respond_to? :subset_operator
+      events = filtering_expression.apply(stream, context)
+      events = subset_expression.apply events if respond_to? :subset_expression
       value = events.map{|event| event[:"#{name.value}"]}
       value = reductive_operator.operate value if respond_to? :reductive_operator
       value
+    end
+  end
+
+  class FilteringExpression < Node
+    def apply(stream, context)
+      stream.select &condition.to_proc(stream, context)
     end
   end
 
@@ -199,83 +235,115 @@ module PQL
   end
 
 
-  # cardinality operators
+  # selective and subset expressions
 
-  class CardinalityOperator < Node
+  class SelectiveExpression < Node
     def apply(stream)
-      child.apply stream
+      nodes = descendants_to LimitingExpression, OrderingExpression, CardinalityExpression
+      matches = [stream]
+
+      p "SelectiveExpression"
+      p nodes.map(&:class)
+      p matches
+
+      nodes.reverse.reduce(matches) do |matches, node|
+        node.apply(matches)
+      end
     end
   end
 
-  class CardinalityOperator < Node
+  class SubsetExpression < Node
     def apply(stream)
-      child.apply stream
+      nodes = descendants_to LimitingExpression, OrderingExpression
+      nodes.reverse.reduce(stream){|memo,node| node.apply(stream)}
     end
   end
 
-  class SimpleCardinalityOperator < CardinalityOperator
-  end
 
-  class ComplexCardinalityOperator < CardinalityOperator
-  end
+  # limiting expressions
 
-  class NoneOperator < CardinalityOperator
-    def apply(selected)
-      selected.none? ? [] : nil
+  class LimitingExpression < Node
+    def apply(matches)
+      matches.map{|match| child.operate match}
     end
   end
 
-  class EachOperator < CardinalityOperator
-    def apply(selected)
-      selected.zip
-    end
-  end
-
-  class EachByOperator < CardinalityOperator
-    def apply(selected)
-    end
-  end
-
-  class AllOperator < CardinalityOperator
-    def apply(selected)
-      selected.any? ? [selected] : nil
-    end
-  end
-
-  class AnyOperator < CardinalityOperator
-    def apply(selected)
-      selected.any? ? [selected] : []
-    end
-  end
-
-  class GroupedByOperator < SubsetOperator
-    def operate(stream)
-    end
-  end
-
-  class SubsetOperator < CardinalityOperator
-    def apply(selected)
-      selected.any? ? [operate(selected)] : []
-    end
-
-    def operate(stream)
-      child.operate stream
-    end
-  end
-
-  class FirstByOperator < SubsetOperator
+  class FirstOperator < Node
     def operate(stream)
       quantity = (respond_to? :integer_literal) ? integer_literal.value : 1
-      stream.sort_by{|event| event[name.value]}[0, quantity]
+      stream[0, quantity]
     end
   end
 
-  class LastByOperator < SubsetOperator
+  class LastOperator < Node
     def operate(stream)
       quantity = (respond_to? :integer_literal) ? integer_literal.value : 1
-      stream.sort_by{|event| event[name.value]}.reverse[0, quantity]
+      p "LAST RUNNING WITH QUANTITY #{quantity}"
+      stream.reverse[0, quantity]
     end
   end
+
+
+  # ordering expression
+
+  class OrderingExpression < Node
+    def apply(matches)
+      matches.map do |match|
+        result = match.sort_by{|event| event[name.value]}
+        result.reverse! if descending.text_value.length > 0
+        result
+      end
+    end
+  end
+
+
+  # cardinality expressions
+
+  class CardinalityExpression < Node
+    def apply(matches)
+      p "CardinalityExpression applied"
+      p matches
+      matches.reduce([]) do |memo, match|
+        p "INNER"
+        p match
+        (memo && result = child.operate(match)) ? memo + result : nil
+      end
+    end
+  end
+
+  class NoneOperator < Node
+    def operate(stream)
+      stream.none? ? [] : nil
+    end
+  end
+
+  class EachOperator < Node
+    def operate(stream)
+      stream.zip
+    end
+  end
+
+  class AllOperator < Node
+    def operate(stream)
+      p "all operator running"
+      p stream
+      p(r = stream.any? ? [stream] : nil)
+      r
+    end
+  end
+
+  class AnyOperator < Node
+    def operate(stream)
+      stream.any? ? [stream] : []
+    end
+  end
+
+  class GroupedByOperator < Node
+    def operate(stream)
+      stream.group_by{|event| event[:"#{name.value}"]}.values
+    end
+  end
+
 
 
   # reductive operators

@@ -2,7 +2,7 @@ class Event
 
   def initialize(attrs)
     @attrs = attrs
-    @attrs[:id] ||= 
+    @attrs[:id] ||= UUID.new
   end
 
   def [](key)
@@ -18,13 +18,16 @@ class Event
   end
 
   def causes?(event)
-
+    event[:caused_by].include? @attrs[:id]
   end
 
   def caused_by?(event)
-  
+    @attrs[:caused_by].include? event[:id]
   end
 
+  def to_hash
+    @attrs
+  end
 
 
   class Taxonomy

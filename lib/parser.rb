@@ -1,7 +1,6 @@
 require 'treetop'
 require File.join(File.expand_path(File.dirname(__FILE__)), 'node_extensions.rb')
 
-
 class PQL::Parser
 
   Treetop.load(File.join(File.expand_path(File.dirname(__FILE__)), 'grammar.treetop'))

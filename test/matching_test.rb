@@ -162,22 +162,22 @@ class TestMatching < Test::Unit::TestCase
   end
 
   def test_unnamed_match
-    pql = 'MATCH LAST BY id WHERE type = "A"'
-    
+    pql = 'MATCH LAST IN ORDER BY id WHERE type = "A"'
+
     stream = [
       {id: 1, type: 'A'},
       {id: 2, type: 'A'}
     ]
 
     application = PQL::Parser.parse(pql).apply(stream)
-    
+
     assert application.matches? == true, 'expression should match stream'
     assert application.cardinality == 1, 'expression should match one time'
     assert application.named_matches == [{}], 'expression should return an empty object as named match'
   end
 
   def test_match
-    pql = 'MATCH LAST BY id AS a WHERE type = "A" AND id < 4'
+    pql = 'MATCH LAST IN ORDER BY id AS a WHERE type = "A" AND id < 4'
 
     stream = [
       {id: 1, type: 'A'},
@@ -194,8 +194,8 @@ class TestMatching < Test::Unit::TestCase
   end
 
   def test_match_2
-    pql = 'MATCH LAST 2 BY id AS a WHERE type = "A" AND id <= 3'
-    
+    pql = 'MATCH LAST 2 IN ORDER BY id AS a WHERE type = "A" AND id <= 3'
+
     stream = [
       {id: 1, type: 'A'},
       {id: 2, type: 'A'},
@@ -207,7 +207,7 @@ class TestMatching < Test::Unit::TestCase
 
     assert application.matches? == true, 'expression should match stream'
     assert application.cardinality == 1, 'expression should match one time'
-    assert application.named_matches == [{a: [{id: 3, type: 'A'}, {id: 2, type: 'A'}]}], 'expression should match 3 events'
+    assert application.named_matches == [{a: [{id: 3, type: 'A'}, {id: 2, type: 'A'}]}], 'expression should match 2 events'
   end
 
   def test_match_3
@@ -297,8 +297,8 @@ class TestMatching < Test::Unit::TestCase
 
   def test_named_matches
     pql = '
-      MATCH FIRST BY id AS a WHERE type IS "A";
-      MATCH LAST BY id AS b WHERE type IS "B";
+      MATCH FIRST IN ORDER BY id AS a WHERE type IS "A";
+      MATCH LAST IN ORDER BY id AS b WHERE type IS "B";
       MATCH ALL AS c WHERE type IS "C";
     '
 

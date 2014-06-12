@@ -10,23 +10,25 @@ grammar PQL
   # expressions
 
   rule matching_expression
-    'MATCH' s cardinality_operator s selective_expression <MatchingExpression> /
-    'MATCH' s cardinality_operator s 'AS' s name s selective_expression <MatchingExpression>
+    'MATCH' s filtering_expression <MatchingExpression> /
+    'MATCH' s 'AS' s name s filtering_expression <MatchingExpression> /
+    'MATCH' s selective_expression s filtering_expression <MatchingExpression> /
+    'MATCH' s selective_expression s 'AS' s name s filtering_expression <MatchingExpression>
   end
 
   rule value_expression
-    '(' s? name s selective_expression s? ')' <ValueExpression> /
-    '(' s? reductive_operator s name s selective_expression s? ')' <ValueExpression> /
-    '(' s? name s 'OF' s subset_operator s selective_expression s? ')' <ValueExpression> /
-    '(' s? reductive_operator s name s 'OF' s subset_operator s selective_expression s? ')' <ValueExpression>
-  end
-
-  rule selective_expression
-    'WHERE' s condition <SelectiveExpression>
+    '(' s? name s filtering_expression s? ')' <ValueExpression> /
+    '(' s? reductive_operator s name s filtering_expression s? ')' <ValueExpression> /
+    '(' s? name s 'OF' s subset_expression s filtering_expression s? ')' <ValueExpression> /
+    '(' s? reductive_operator s name s 'OF' s subset_expression s filtering_expression s? ')' <ValueExpression>
   end
 
 
   # conditions
+  
+  rule filtering_expression
+    'WHERE' s condition <FilteringExpression>
+  end
 
   rule condition
     '(' s? condition s? ')' /
@@ -46,23 +48,45 @@ grammar PQL
   end
 
 
-  # cardinality operators
+  # selective and subset expressions
 
-  rule cardinality_operator
-    simple_cardinality_operator <CardinalityOperator> /
-    complex_cardinalty_operator+ <CardinalityOperator>
+  rule selective_expression
+    (limiting_expression / ordering_expression / cardinality_expression) (s selective_expression)? <SelectiveExpression>
   end
 
-  rule simple_cardinality_operator
-    child:(none / each / all / any) <SimpleCardinalityOperator>
+  rule subset_expression
+    (limiting_expression / ordering_expression) (s subset_expression)? <SubsetExpression>
   end
 
-  rule complex_cardinality_operator
-    child:(first_by / last_by / grouped_by) <ComplexCardinalityOperator>
+
+  # limiting expressions
+
+  rule limiting_expression
+    child:(first / last) <LimitingExpression>
   end
 
-  rule subset_operator
-    child:(first_by / last_by) <SubsetOperator>
+  rule first
+    'FIRST' s integer_literal <FirstOperator> /
+    'FIRST' <FirstOperator>
+  end
+
+  rule last
+    'LAST' s integer_literal <LastOperator> /
+    'LAST' <LastOperator>
+  end
+
+
+  # ordering expressions
+
+  rule ordering_expression
+    'IN' s descending:('DESCENDING' s)? 'ORDER' s 'BY' s name <OrderingExpression>
+  end
+
+
+  # cardinality expressions
+
+  rule cardinality_expression
+    child:(none / each / all / any / grouped_by) <CardinalityExpression>
   end
 
   rule none
@@ -83,16 +107,6 @@ grammar PQL
 
   rule grouped_by
     'GROUPED' s 'BY' s name <GroupedByOperator>
-  end
-
-  rule first_by
-    'FIRST' s 'BY' s name <FirstByOperator> /
-    'FIRST' s integer_literal s 'BY' s name <FirstByOperator>
-  end
-
-  rule last_by
-    'LAST' s 'BY' s name <LastByOperator> /
-    'LAST' s integer_literal s 'BY' s name <LastByOperator>
   end
 
 
@@ -237,12 +251,13 @@ grammar PQL
 
   rule time_delta_literal
     value:'1' s unit:('DAY' / 'HOUR' / 'MINUTE' / 'SECOND') s 'AGO' <TimeDeltaLiteral> /
-    value:([02-9][0-9]*) s unit:('DAYS' / 'HOURS' / 'MINUTES' / 'SECONDS') s 'AGO' <TimeDeltaLiteral>
+    value:(('0' / [2-9]) [0-9]*) s unit:('DAYS' / 'HOURS' / 'MINUTES' / 'SECONDS') s 'AGO' <TimeDeltaLiteral>
   end
 
   rule null_literal
     'NULL' <NullLiteral>
   end
+
 
   # name and whitespace helpers
 

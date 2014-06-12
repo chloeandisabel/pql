@@ -6,20 +6,20 @@ class TestParsing < Test::Unit::TestCase
   def test_parsing
     expressions = [
       
-    'MATCH LAST 5 BY created_at WHERE type IS AwardCashbackedPaymentCreditEntry;',
+    'MATCH LAST 5 IN ORDER BY created_at WHERE type IS "AwardCashbackedPaymentCreditEntry";',
 
-    'MATCH ALL AS items WHERE type IS CheckoutItemSelected AND caused_by IS NULL',
+    'MATCH ALL AS items WHERE type IS "CheckoutItemSelected" AND caused_by IS NULL',
 
-    'MATCH FIRST BY id AS discount WHERE type IS CheckoutXPercentOffItemGeneralEntry AND label =~ /Spree/;
-     MATCH EACH AS item WHERE type IS CheckoutItemSelected AND id NOT IN (applied_to WHERE type IS CheckoutItemRemoved)',
+    'MATCH FIRST IN ORDER BY id AS discount WHERE type IS "CheckoutXPercentOffItemGeneralEntry" AND label =~ /Spree/;
+     MATCH EACH AS item WHERE type IS "CheckoutItemSelected" AND id NOT IN (applied_to WHERE type IS "CheckoutItemRemoved")',
 
-    'MATCH NONE WHERE type IS "CreditEarned" AND amount > (SUM amount OF LAST 3 BY id WHERE type IS PartialCreditEarned)',
+    'MATCH NONE WHERE type IS "CreditEarned" AND amount > (SUM amount OF LAST 3 IN ORDER BY id WHERE type IS "PartialCreditEarned")',
 
     'MATCH EACH WHERE
       type IN ["CheckoutNetItemTotalEntry", "CheckoutPromotionApplied"] AND
       created_at >= (MAX created_at WHERE type IS CheckoutSummaryRequested);',
 
-    'MATCH FIRST BY id WHERE
+    'MATCH FIRST IN ORDER BY id WHERE
       type = "CheckoutItemRemoved" AND
       applied_to IN (id WHERE
         type = "CheckoutItemSelected" AND
@@ -65,9 +65,9 @@ class TestParsing < Test::Unit::TestCase
         )
       );',
 
-      'MATCH LAST BY created_at AS item_total WHERE TYPE IS "CheckoutNetItemTotalEntry";
-       MATCH LAST BY created_at AS shipping_total WHERE TYPE IS "CheckoutNetShippingTotalEntry";
-       MATCH LAST BY created_at AS tax_total WHERE TYPE IS "CheckoutTaxTotalEntry";
+      'MATCH LAST IN ORDER BY created_at AS item_total WHERE TYPE IS "CheckoutNetItemTotalEntry";
+       MATCH LAST IN ORDER BY created_at AS shipping_total WHERE TYPE IS "CheckoutNetShippingTotalEntry";
+       MATCH LAST IN ORDER BY created_at AS tax_total WHERE TYPE IS "CheckoutTaxTotalEntry";
        MATCH EACH AS credit WHERE
          TYPE IN [
            "AwardAdminPaymentCreditEntry",

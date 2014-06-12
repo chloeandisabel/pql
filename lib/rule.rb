@@ -6,7 +6,7 @@ class Rule
 
   # defaults for dynamically defined methods
 
-  @context = []
+  @header = Set.new
   @description = ''
   @pattern = PQL::Block.new '', 0..0
   @methods = {}
@@ -16,7 +16,7 @@ class Rule
   # force subclasses to inherit class instance variables
 
   def self.inherited(subclass)
-    [:@pattern, :@methods, :@action, :@context, :@description].each do |v|
+    [:@pattern, :@methods, :@action, :@header, :@description].each do |v|
       subclass.instance_variable_set(v, self.instance_variable_get(v))
     end
   end
@@ -28,8 +28,8 @@ class Rule
     @description = description
   end
 
-  def self.context(*columns)
-    @context += columns
+  def self.header(*columns)
+    @header += columns
   end
 
   def self.pattern(pql)
@@ -48,12 +48,12 @@ class Rule
 
   # instance methods
 
-  def context_for(stream)
+  def header_for(stream)
     ordered_stream = stream.sort_by{|e| e[:created_at]}
-    self.class.instance_variable_get(:@context).reduce({}) do |context, column|
+    self.class.instance_variable_get(:@header).reduce({}) do |header, column|
       source = ordered_stream.find{|f| f[column].present?}
-      context[column] = source[column] if source
-      context
+      header[column] = source[column] if source
+      header
     end
   end
 
@@ -65,26 +65,28 @@ class Rule
     self.class.instance_variable_get :@pattern
   end
 
+  def methods
+    self.class.instance_variable_get :@methods
+  end
+
   def action
     self.class.instance_variable_get :@action
   end
 
   def apply(stream)
-    application = pattern.apply stream
-    context = context_for stream
-
-    application.each_match do |matches|
+    header = header_for stream
+    pattern.apply(stream).each_match do |matches|
       cause = matches.map{|e| e[:id]}
-      transaction = Transaction.new context, description, cause
-      ActionContext.new(@methods, matches).instance_exec transaction, &action
-      transaction
+      entry = Entry.new header, description, cause
+      ActionBlockHelper.new(methods, matches).instance_exec entry, &action
+      entry
     end
   end
 
 
   # action context
 
-  class ActionContext
+  class ActionBlockHelper
     def initialize(methods, matches)
       @methods = methods
       @matches = matches

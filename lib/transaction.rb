@@ -1,28 +1,26 @@
-require File.join(File.expand_path(File.dirname(__FILE__)), 'event.rb')
-
-# transaction context
-
 class Transaction
 
-  def initialize(context, description, cause = [])
-    @context = context
-    @description = description
-    @cause = cause
-    @events = []
-    @id = 
+  def initialize
+    @entries = []
+    @persisted = false
   end
 
-  attr_reader :events
-
-  def to_sql
+  def <<(entry)
+    raise if @persisted
+    @entries << entry
   end
 
-  def method_missing(name, *args)
-    if Event::Taxonomy.include? name
-      @events.push args.merge(@context).merge(type: name, caused_by: @cause)
-    else
-      super
+  def persist!
+    raise if @persisted
+
+    sql = @entries.reduce '' do |memo, entry|
+      entry_insert = "INSERT INTO fact_transactions () VALUES ();"
+      memo + entry_insert + entry.events.reduce do |memo, event|
+        memo + "INSERT INTO facts () VALUES ();"
+      end
     end
+
+    @persisted = EventStore::CLIENT.query(sql)
   end
 
 end
