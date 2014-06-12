@@ -11,17 +11,18 @@ A small declarative language for describing patterns in a stream of events.
 Matching Expressions
 --------------------
 
-Matching expressions match the presence or absence of a specific set of facts in a stream.  
+Matching expressions match the presence or absence of a specific set of events in a stream.  
 
     MATCH ALL AS pageviews WHERE type IS 'PageViewed'
 
+When applied to a stream, matching expressions produce a set of zero or more *matches*, each consisting zero or more events.  An expression is said to match a stream if its set of matches has at least one member.
 
 A matching expression can be broken down into the following parts:
 
 - match keyword: `MATCH`
-- cardinality operator: `ALL`
+- selective expression: `ALL`
 - naming expression: `AS pageviews`
-- conditions: `WHERE type IS 'PageViewed'`
+- filtering expression: `WHERE type IS 'PageViewed'`
 
 
 
@@ -31,45 +32,57 @@ matching expressions always begin with the word `MATCH`
 
 
 
-### Cardinality Operator
+### Selective Expression
 
 Matching expressions can match the same stream of events multiple times - an expression's *cardinality* with respect to a stream is the number of distinct sets of events it matches in the stream.
 
-In the given example `ALL` will match once, selecting all of the events with type 'PageViewed' and giving the expression a cardinality of one.
+A selective expression transforms the single set of filtered events into one or more *matches*, determining its cardinality.
 
-The available cardinality operators are:
+In the given example `ALL` is the most basic selective expression, it will produce one match, selecting all of the filtered events and giving the expression a cardinality of one.
 
-  - `ALL` matches one time selecting all of the events meeting the conditions
-  - `EACH` matches once for each fact in the stream, selecting one fact w/ each match.
-  - `ANY` always matches once, whether or not any events in the stream meet the conditions.  If any events do meet the conditions, it selects them, otherwise it selects no events.
-stream meet the given conditions.
-  - `NONE` - matches once and selects no events.  It matches only if no events in the
+Selective expressions can be made up of any number of subexpressions, which compose from right to left.  Each subexpression is applied separately to each of the matches produced by the preceding expression.
 
-The following complex cardinality operators can be used on their own or in combination with each other to select more specific subsets of events:
+For example, the following matching epxression selects each event with the highest priority within the group of 'PromotionApplied' events sharing its color.
 
-  - `GROUPED BY column` matches once for each unique value of a column, selecting the set of facts sharing that value.
-  - `FIRST BY column` matches one time selecting the single event with the smallest value for 'column'
-  - `FIRST n BY column` matches one time selecting n events with the smallest values for 'column'
-  - `LAST BY column` matches one time selecting the single event with the largest value for 'column'
-  - `LAST n BY column` matches one time selecting n events with the largest values for 'column'
+    MATCH FIRST IN ORDER BY priority GROUPED BY color AS promotion WHERE TYPE 'PromotionApplied'
+    
+This selective expression here is `FIRST IN ORDER BY priority GROUPED BY color`, and its three subexpressions are `FIRST`, `IN ORDER BY priority`, and `GROUPED BY color`. 
 
-for example, the following expression selects each event with the highest priority within the group of events sharing its color.
+The rightmost subexpression, `GROUPED BY color` is applied first, and splits the events into matches by their color attribute.  Next, the `IN ORDER BY priority` subexpression is applied and orders the events within each match by their priority.  Finally, the `FIRST` subexpression is applied and selects only the first event within each match. 
 
-    MATCH FIRST BY priority GROUPED BY color AS promotion WHERE TYPE 'PromotionApplied'
+
+There are three types of selective subexpressions:
+
+  - **Ordering Expressions:** ordering expressions reorder events within each match without changing the number of matches or the number of events in each match.
+  
+    - `IN ORDER BY column` sorts events within each match from lowest to highest
+    - `IN DESCENDING ORDER BY column` sorts events within each match from highest to lowest.
+
+  - **Limiting Expressions:** limiting expressions select subsets of events within each match without changing the overall number of matches.
+    
+    - `FIRST`, `LAST`, `FIRST n`, or `LAST n`
+
+  - **Cardinality Expressions:** cardinality expressions determine the number of matches.
+
+    - `ALL` is the default cardinality - it matches one time selecting all of the events meeting the conditions.
+    - `EACH` matches once for each event in the stream, selecting one event in each match.
+    - `ANY` always matches one time, whether or not any events in the stream meet the conditions.  If any events do meet the conditions, it selects them, otherwise it selects no events.
+    - `NONE` matches one time and selects no events.  It matches only if no events in the stream meet the conditions.
+    - `GROUPED BY column` - matches once for each unique value of a column, selecting the set of events sharing that value.
 
 
 
 ### Naming Expression
 
-Matches can be optionally named by including a naming expression immediately following the cardinality operator.  In the preceding example `AS pageviews` names the match 'pageviews'.  
+Matches can be optionally named by including a naming expression immediately following the cardinality operator.  In the first example, `MATCH ALL AS pageviews WHERE type IS 'PageViewed'`, `AS pageviews` names the match 'pageviews'.  
 
 A naming expression consists of the `AS` keyword followed by a match name.  Match names are not quoted and can contain upper and lower case letters and underscores.
 
 
 
-### Conditions
+### Filtering Expressions
 
-The set of conditions for a matching expression begins with the `WHERE` keyword, and is followed by any number of conditions ordered using `()` and combined using the boolean operators `AND` and `OR`.  To find matching events, an expression checks each fact in the stream individually against its conditions - selecting the events for which the conditions are true.
+Filtering expressions are made up of a set of conditions and begin with the `WHERE` keyword.  Conditions are ordered using `()` and combined using the boolean operators `AND` and `OR`.  To find matching events, an expression checks each fact in the stream individually against its conditions - selecting the events for which the conditions are true.
 
 
 ### comparisons
@@ -160,7 +173,9 @@ The matches here would be the sets of events w/ ids (1, 3), (1, 4), (2, 3), and 
 Rules
 -----
 
-Rules define a pattern using a block of PQL, and then accept a block of ruby code to run for each successful match.  The block is passed one argument, 't',
+Rules define a pattern using a block of PQL, and then accept a block of ruby code to run for each successful match.  The block is run in a context with methods defined for each of the pattern's named matches.  Methods can also be defined for the rule, and run in same context as the action. 
+
+The action block is passed one argument, 'e', an `Entry` instance.  The entry has methods defined to write each fact type in the taxonomy.
 
 ```ruby
 class PerItemDiscountAccountingRule < Rule
@@ -176,8 +191,8 @@ class PerItemDiscountAccountingRule < Rule
       discount.percent * item.amount
     end
 
-    action do |t|
-      t.order_level_discount_applied_to_item(
+    action do |e|
+      e.order_level_discount_applied_to_item(
         sku: item.sku,
         promotion_id: discount.promotion_id,
         amount: amount
@@ -205,3 +220,4 @@ end
 ```
 
  In this example, an event of type 'A' will belong to the types 'A', 'B', and 'C', and an event of type 'Z' will belong to the types 'Z', 'A', 'B', and 'C'.
+

@@ -2,11 +2,11 @@ require File.join(File.expand_path(File.dirname(__FILE__)), 'event.rb')
 
 class Entry
 
-  def initialize(header, description, cause = [])
-    @header = header
+  def initialize(context, description, cause = [])
+    @context = context
     @description = description
     @cause = cause
-    @events = []
+    @facts = []
     @id = UUID.new
   end
 

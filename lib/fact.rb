@@ -1,4 +1,4 @@
-class Event
+class Fact
 
   def initialize(attrs)
     @attrs = attrs
