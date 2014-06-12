@@ -68,7 +68,7 @@ There are three types of selective subexpressions:
     - `EACH` matches once for each event in the stream, selecting one event in each match.
     - `ANY` always matches one time, whether or not any events in the stream meet the conditions.  If any events do meet the conditions, it selects them, otherwise it selects no events.
     - `NONE` matches one time and selects no events.  It matches only if no events in the stream meet the conditions.
-    - `GROUPED BY column` - matches once for each unique value of a column, selecting the set of events sharing that value.
+    - `GROUPED BY column` matches once for each unique value of a column, selecting the set of events sharing that value.
 
 
 
