@@ -202,24 +202,24 @@ In Practice
 
 ### Rules
 
-Rules define a pattern using a block of PQL, and then accept a block of ruby code to run for each successful match.  The block is run in a context with methods defined for each of the pattern's named matches.  Methods can also be defined for the rule, and run in same context as the action. 
+Rules define a pattern using a block of PQL, and then accept a block of ruby code to run for each successful match.  The block is run in a context with methods defined for each of the pattern's named matches.  Methods can also be defined for the rule, and will run in same context as the action. 
 
 The action block is passed one argument, 'e', an `Entry` instance.  The entry has methods defined to write each fact type in the ontology.
 
-Events written by the rule will store their *cause*, a list of all the ids of the facts in the current match.  Events written by the rule also include a number of default attributes enumerated as the rule's *header*.  The rule will pass the value from the most recent event in the stream for each of these attributes to the entry, which will include them in every new event that it creates.
+Events written by the rule will store their *cause*, a list of all the ids of the facts making up the current match.  Events written by the rule also include a number of default attributes enumerated as the rule's *header*.  The rule will pass the value for each of these attributes from the most recent event in the stream to the entry, which will include them in every new event that it creates.
 
 
 ```ruby
 class PerItemDiscountAccountingRule < Rule
 
   description 'split order level discounts across individual items'
+
+  header :user_id, :order_id
   
   pattern <<-PQL
     MATCH EACH AS item WHERE type IS 'ItemAddedToCart';
     MATCH EACH AS discount WHERE type IS 'OrderLevelDiscountApplied';
   PQL
-
-  header :user_id, :order_id
 
   method :amount do
     discount.percent * item.amount
@@ -278,7 +278,7 @@ Transactions are by default non-atomic, but atomic transactions can be created b
 
 ### Events and Ontology
 
-The *ontology* of event types can be thought of as a directed graph, where each type is a node having edges directed from itself to any number of parent types.  A type's ancestors are the set of all reachable nodes.  Events are considered to be members of their own type and of each of its ancestor types.
+The event *ontology* represents types as a directed graph, where each type is a node having edges directed from itself to any number of parent types.  A type's ancestors are the set of all reachable nodes.  Events are considered to be members of their own type and of each of its ancestor types.
 
 ```ruby
 Event::Ontology.define do
