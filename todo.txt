@@ -1,0 +1,11 @@
+type condition
+time delta literal
+optional ascending keyword
+arguments to rule methods
+arguments to pql blocks
+pql refer to named matches from previous statements, handle causality when next statements depend on each event in previous statements indepenedently
+test event
+test rule
+test event store
+test transaction
+make uuid binary
