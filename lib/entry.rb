@@ -2,19 +2,25 @@ require File.join(File.expand_path(File.dirname(__FILE__)), 'event.rb')
 
 class Entry
 
-  def initialize(context, description, cause = [])
-    @context = context
+  def initialize(description, header, cause = [], attrs = {})
     @description = description
+    @header = header
     @cause = cause
-    @facts = []
+    @attrs = attrs
     @id = UUID.new
+    @facts = []
   end
 
   attr_reader :events
 
+  def [](key)
+    return instance_variable_get(key) if key in [:id, :description]
+    @attrs[key]
+  end
+
   def method_missing(name, *args)
-    if Event::Taxonomy.include? name
-      @events.push args.merge(@context).merge(type: name, caused_by: @cause)
+    if Event::Ontology.include? name
+      @events.push args.merge(@header).merge(type: name, caused_by: @cause)
     else
       super
     end

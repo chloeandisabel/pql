@@ -1,11 +1,11 @@
-class RuleSet
+class Ruleset
 
   def initialize(*rules)
     @rules = rules
   end
 
   def apply(stream)
-    transaction = Transaction.new
+    transaction = EventStore::Transaction.new
 
     rules.each do |rule|
       rule.apply(stream).each do |entry|
@@ -14,7 +14,7 @@ class RuleSet
       end
     end
 
-    transaction.persist!
+    transaction
   end
 
 end

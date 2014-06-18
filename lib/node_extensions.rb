@@ -93,8 +93,6 @@ module PQL
     def named_matches
       return [] unless matches?
 
-      p "NAMED MATCHES RUNNING"
-
       head, *tail = @expression_results.map{|result|
         if result[:matches].any?
           result[:matches].map{|match|
@@ -105,20 +103,9 @@ module PQL
         end
       }
 
-      p head
-      p tail
-      p head.product(*tail)
-
-      p "reducing each match"
-
-      r = head.product(*tail).map{|matches| 
+      head.product(*tail).map{|matches| 
         matches.reduce(&:merge)
       }
-
-      p "DONE WITH NAMED MATCHES"
-
-
-      r
     end
 
     def each_match(&block)
@@ -146,13 +133,8 @@ module PQL
 
   class MatchingExpression < Node
     def match(stream)
-      puts "\nMatchingExpression#match running"
-      p self.text_value
-      p stream
-
       matches = filtering_expression.apply(stream, [])
       matches = selective_expression.apply matches if respond_to? :selective_expression
-
       matches
     end
 
@@ -242,10 +224,6 @@ module PQL
       nodes = descendants_to LimitingExpression, OrderingExpression, CardinalityExpression
       matches = [stream]
 
-      p "SelectiveExpression"
-      p nodes.map(&:class)
-      p matches
-
       nodes.reverse.reduce(matches) do |matches, node|
         node.apply(matches)
       end
@@ -278,7 +256,6 @@ module PQL
   class LastOperator < Node
     def operate(stream)
       quantity = (respond_to? :integer_literal) ? integer_literal.value : 1
-      p "LAST RUNNING WITH QUANTITY #{quantity}"
       stream.reverse[0, quantity]
     end
   end
@@ -301,11 +278,7 @@ module PQL
 
   class CardinalityExpression < Node
     def apply(matches)
-      p "CardinalityExpression applied"
-      p matches
       matches.reduce([]) do |memo, match|
-        p "INNER"
-        p match
         (memo && result = child.operate(match)) ? memo + result : nil
       end
     end
@@ -325,10 +298,7 @@ module PQL
 
   class AllOperator < Node
     def operate(stream)
-      p "all operator running"
-      p stream
-      p(r = stream.any? ? [stream] : nil)
-      r
+      stream.any? ? [stream] : nil
     end
   end
 

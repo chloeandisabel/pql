@@ -22,8 +22,49 @@ class Rule
   end
 
 
+  # instance methods
+
+  def description
+    self.class.instance_variable_get :@description
+  end
+
+  def pattern
+    self.class.instance_variable_get :@pattern
+  end
+
+  def methods
+    self.class.instance_variable_get :@methods
+  end
+
+  def action
+    self.class.instance_variable_get :@action
+  end
+
+  def header_for(stream)
+    ordered_stream = stream.sort_by{|e| e[:created_at]}
+    self.class.instance_variable_get(:@header).reduce({}) do |header, column|
+      source = ordered_stream.find{|f| f[column].present?}
+      header[column] = source[column] if source
+      header
+    end
+  end
+
+  def apply(stream)
+    header = header_for stream
+    pattern.apply(stream).each_match do |matches|
+      cause = matches.map{|e| e[:id]}
+      entry = Entry.new header, description, cause
+      ActionBlockHelper.new(methods, matches).instance_exec entry, &action
+      entry
+    end
+  end
+
+
+
   # class methods used to define subclasses
 
+  private
+  
   def self.description(description)
     @description = description
   end
@@ -45,43 +86,6 @@ class Rule
     @action = block
   end
 
-
-  # instance methods
-
-  def header_for(stream)
-    ordered_stream = stream.sort_by{|e| e[:created_at]}
-    self.class.instance_variable_get(:@header).reduce({}) do |header, column|
-      source = ordered_stream.find{|f| f[column].present?}
-      header[column] = source[column] if source
-      header
-    end
-  end
-
-  def description
-    self.class.instance_variable_get :@description
-  end
-
-  def pattern
-    self.class.instance_variable_get :@pattern
-  end
-
-  def methods
-    self.class.instance_variable_get :@methods
-  end
-
-  def action
-    self.class.instance_variable_get :@action
-  end
-
-  def apply(stream)
-    header = header_for stream
-    pattern.apply(stream).each_match do |matches|
-      cause = matches.map{|e| e[:id]}
-      entry = Entry.new header, description, cause
-      ActionBlockHelper.new(methods, matches).instance_exec entry, &action
-      entry
-    end
-  end
 
 
   # action context
