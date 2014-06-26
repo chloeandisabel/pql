@@ -1,5 +1,5 @@
-require_relative 'node_extensions.rb'
-require_relative 'entry.rb'
+require_relative './node_extensions.rb'
+require_relative './entry.rb'
 
 
 class Rule

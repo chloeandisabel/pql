@@ -1,5 +1,5 @@
 require 'treetop'
-require_relative 'node_extensions.rb'
+require_relative './node_extensions.rb'
 
 class PQL::Parser
 

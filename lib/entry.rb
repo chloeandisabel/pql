@@ -1,4 +1,4 @@
-require_relative 'event.rb'
+require_relative './event.rb'
 
 class Entry
 

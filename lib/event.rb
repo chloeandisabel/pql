@@ -1,5 +1,5 @@
-require_relative 'uuid.rb'
-require_relative 'ontology.rb'
+require_relative './uuid.rb'
+require_relative './ontology.rb'
 
 class Event
 

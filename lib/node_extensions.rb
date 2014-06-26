@@ -1,5 +1,5 @@
 require 'treetop'
-require_relative 'event.rb'
+require_relative './event.rb'
 
 
 class Treetop::Runtime::SyntaxNode
