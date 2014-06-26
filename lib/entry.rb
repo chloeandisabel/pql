@@ -14,7 +14,7 @@ class Entry
   attr_reader :events
 
   def [](key)
-    return instance_variable_get(key) if key in [:id, :description]
+    return instance_variable_get(key) if [:id, :description].include? key
     @attrs[key]
   end
 

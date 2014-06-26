@@ -1,5 +1,5 @@
 require_relative 'node_extensions.rb'
-require_relative 'transaction.rb'
+require_relative 'entry.rb'
 
 
 class Rule
@@ -52,7 +52,7 @@ class Rule
   def apply(stream)
     header = header_for stream
     pattern.apply(stream).each_match do |matches|
-      cause = matches.map{|e| e[:id]}
+      cause = matches.values.flatten.map{|e| e[:id]}.uniq
       entry = Entry.new header, description, cause
       ActionBlockHelper.new(methods, matches).instance_exec entry, &action
       entry
