@@ -1,7 +1,7 @@
-require File.join(File.expand_path(File.dirname(__FILE__)), '../lib/event.rb')
+require_relative '../lib/event.rb'
 require 'test/unit'
 
-Event::Taxonomy.define do
+Ontology.define do
   type :A, [:X, :Y, :Z]
   type :B, [:A, :C]
   type :C, [:D, :E]

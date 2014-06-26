@@ -1,5 +1,5 @@
-require File.join(File.expand_path(File.dirname(__FILE__)), '../lib/parser.rb')
-require File.join(File.expand_path(File.dirname(__FILE__)), '../lib/rule.rb')
+require_relative '../lib/parser.rb'
+require_relative '../lib/rule.rb'
 require 'test/unit'
 
 
