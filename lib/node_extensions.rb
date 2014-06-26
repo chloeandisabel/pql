@@ -1,5 +1,5 @@
 require 'treetop'
-require File.join(File.expand_path(File.dirname(__FILE__)), 'event.rb')
+require_relative 'event.rb'
 
 
 class Treetop::Runtime::SyntaxNode

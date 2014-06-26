@@ -1,5 +1,5 @@
-require File.join(File.expand_path(File.dirname(__FILE__)), 'node_extensions.rb')
-require File.join(File.expand_path(File.dirname(__FILE__)), 'transaction.rb')
+require_relative 'node_extensions.rb'
+require_relative 'transaction.rb'
 
 
 class Rule

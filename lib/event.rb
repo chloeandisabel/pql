@@ -1,4 +1,4 @@
-require File.join(File.expand_path(File.dirname(__FILE__)), 'uuid.rb')
+require_relative 'uuid.rb'
 
 class Event
 
