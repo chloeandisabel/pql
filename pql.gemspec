@@ -11,5 +11,5 @@ Gem::Specification.new do |s|
                    'lib/ruleset.rb', 'lib/stream.rb']
   s.homepage    = 'https://bitbucket.org/charlieschwabacher/pql'
 
-  s.add_runtime_dependency 'treetop', ['=1.5.3']
+  s.add_runtime_dependency 'treetop'
 end
