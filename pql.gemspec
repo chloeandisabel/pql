@@ -6,9 +6,7 @@ Gem::Specification.new do |s|
   s.description = 'A small declarative language for describing patterns in streams of events.'
   s.authors     = ['Charlie Schwabacher']
   s.email       = 'charlie.schwbacher@chloeandisabel.com'
-  s.files       = ['lib/entry.rb', 'lib/event.rb', 'lib/event_store.rb', 
-                   'lib/ontology.rb', 'lib/parser.rb', 'lib/rule.rb', 
-                   'lib/ruleset.rb', 'lib/stream.rb']
+  s.files       = ['lib/pql.rb', 'lib/pql/node_extensions.rb']
   s.homepage    = 'https://bitbucket.org/charlieschwabacher/pql'
 
   s.add_runtime_dependency 'treetop'
