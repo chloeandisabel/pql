@@ -10,4 +10,6 @@ Gem::Specification.new do |s|
                    'lib/ontology.rb', 'lib/parser.rb', 'lib/rule.rb', 
                    'lib/ruleset.rb', 'lib/stream.rb']
   s.homepage    = 'https://bitbucket.org/charlieschwabacher/pql'
+
+  s.add_runtime_dependency 'treetop', ['=1.5.3']
 end
