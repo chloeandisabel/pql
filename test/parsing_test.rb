@@ -1,11 +1,20 @@
-require File.join(File.expand_path(File.dirname(__FILE__)), '../lib/parser.rb')
+require_relative '../lib/pql/parser.rb'
+require_relative '../lib/pql/applications.rb'
+require_relative '../lib/pql/node_extensions.rb'
 require 'test/unit'
 
 class TestParsing < Test::Unit::TestCase
 
   def test_parsing
     expressions = [
-      
+
+    'MATCH EACH AS item WHERE type IS "CheckoutItemSelected" AND id NOT IN (applied_to WHERE type IS "CheckoutItemRemoved");
+     MATCH EACH AS tax WHERE type IS "CheckoutItemTaxEntry" JOINING item WHERE applied_to = item.id;',
+    
+    'MATCH EACH AS item WHERE type IS "CheckoutItemSelected";
+     MATCH EACH AS tax WHERE type IS "CheckoutItemTaxEntry" JOINING item WHERE sku = item.sku;
+     MATCH EACH AS credit WHERE type IS "CheckoutItemCreditEntry" JOINING item WHERE sku = item.sku;',
+
     'MATCH LAST 5 IN ORDER BY created_at WHERE type IS "AwardCashbackedPaymentCreditEntry";',
 
     'MATCH ALL AS items WHERE type IS "CheckoutItemSelected" AND caused_by IS NULL',

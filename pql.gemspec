@@ -7,7 +7,6 @@ Gem::Specification.new do |s|
   s.authors     = ['Charlie Schwabacher']
   s.email       = 'charlie.schwbacher@chloeandisabel.com'
   s.files       = ['lib/pql.rb', 'lib/pql/node_extensions.rb']
-  s.homepage    = 'https://bitbucket.org/charlieschwabacher/pql'
 
   s.add_runtime_dependency 'treetop'
 end

@@ -1,5 +1,51 @@
+pql refer to named matches from previous statements, handle causality when next statements depend on each event in previous statements indepenedently (joins x where y = x.y)
+
+
+joins
+-----
+
+have left matches (events being joined to) - subject is left event
+have right matches (events being selected)
+
+for match in left matches
+  for match in right matches
+    take events from right match where condition is true for any event in left match
+
+
+
+levels of matches
+-----------------
+Match - events matched in one cardinal match of a single expression
+ExpressionApplication - set of matches of a single expression each containing many events
+MatchSet - set of matches from block taking one Match from each ExpressionResult
+BlockApplication - set of all MatchSets produced by applying a block to a stream
+
+  Match:
+    - name -> String
+    - events -> [Event]
+    - join -> Match
+
+  ExpressionApplication:
+    - name -> String
+    - matches -> [Match]
+    - join -> ExpressionApplication
+    - cardinality -> Number
+      - 0 if no matches
+      - 1 if joins, match none, match all, or match any
+      - number of matches if match each
+
+  BlockApplication:
+    - expression_applications: -> [ExpressionApplication]
+    - match_sets: -> [{name: [Event]}
+      - produces match sets by
+    - matches?: -> Boolean
+      - returns true if any matches exist
+    - cardinality: -> Integer
+      - multiplies cardinality of each expression application
+    - each(&block)
+      - runs block once for each match set, passing named matches
+
 type condition
 time delta literal
 optional ascending keyword
 arguments to pql blocks
-pql refer to named matches from previous statements, handle causality when next statements depend on each event in previous statements indepenedently (joins x where y = x.y)

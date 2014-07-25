@@ -6,14 +6,17 @@ grammar PQL
     s? (matching_expression s? ';' s?)* (matching_expression s?)? <Block>
   end
 
-
-  # expressions
-
   rule matching_expression
-    'MATCH' s filtering_expression <MatchingExpression> /
-    'MATCH' s 'AS' s name s filtering_expression <MatchingExpression> /
-    'MATCH' s selective_expression s filtering_expression <MatchingExpression> /
-    'MATCH' s selective_expression s 'AS' s name s filtering_expression <MatchingExpression>
+    'MATCH' s selective_expression s (naming_expression s)? filtering_expression s joining_expression <MatchingExpression> /
+    'MATCH' s selective_expression s (naming_expression s)? filtering_expression <MatchingExpression>
+  end
+
+  rule naming_expression
+    'AS' s name <NamingExpression>
+  end
+
+  rule joining_expression
+    'JOINING' s name s filtering_expression <JoiningExpression>
   end
 
   rule value_expression
@@ -266,7 +269,7 @@ grammar PQL
   end
 
   rule name
-    [a-zA-Z_]+ <Name>
+    [a-zA-Z_]+ ('.' [a-zA-Z_]+)? <Name>
   end
 
   rule s

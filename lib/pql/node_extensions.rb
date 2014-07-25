@@ -52,76 +52,23 @@ module PQL
   end
 
 
-  # class representing set of matches between a block of expressions and a stream of events
-
-  class MatchSet
-
-    # accepts
-    def initialize(expression_results)
-      @expression_results = expression_results
-    end
-
-    attr_reader :expression_results
-
-    # any matching expressions from the block that fail to match will have returned nil.
-    # return true if all expressions have matched, false otherwise
-    def matches?
-      @expression_results.all?{|result| result[:matches]}
-    end
-
-    # the cardinality is the length of the cartesian product of all match sets
-    def cardinality
-      return 0 unless matches?
-
-      @expression_results.reduce(1){|memo, result|
-        result[:matches].any? ? memo * result[:matches].length : memo
-      }
-    end
-
-    # return flat array of all matching events
-    def all_matches
-      return [] unless matches?
-      @expression_results.reduce([]){|memo, result| memo + result[:matches]}.flatten
-    end
-
-
-    # convert sets of expression matches to arrays of hashes {name: [events..]},
-    # find the cartesian product of each expression's set of distinct matches, and merge
-    # hashes to produce complete sets of named matches
-    def named_matches
-      return [] unless matches?
-
-      head, *tail = @expression_results.map{|result|
-        if result[:matches].any?
-          result[:matches].map{|match|
-            result[:name] ? Hash[result[:name], match] : {}
-          }.compact
-        else
-          [{}]
-        end
-      }
-
-      head.product(*tail).map{|matches| 
-        matches.reduce(&:merge)
-      }
-    end
-
-    def each_match(&block)
-      named_matches.map{|match| block.call match}
-    end
-  end
-
-
-
   # block
 
   class Block < Node
 
-    # apply the block to a stream
-    def apply(stream)
-      MatchSet.new descendants_to(MatchingExpression).map{|expression|
-        {name: expression.match_name, matches: expression.match(stream)}
-      }
+    # apply the block to a set of events
+    def apply(events)
+      expression_applications = descendants_to(MatchingExpression).reduce([]) do |precedents, expression|
+        expression_application = expression.match events, precedents
+
+        if expression.name and precedents.any?{|precedent| precedent.name == expression.name}
+          raise 'match names within a block must be unique'
+        end
+
+        precedents << expression_application
+      end
+
+      BlockApplication.new expression_applications
     end
 
   end
@@ -130,30 +77,77 @@ module PQL
   # expressions and clauses
 
   class MatchingExpression < Node
-    def match(stream)
-      matches = filtering_expression.apply(stream, [])
-      matches = selective_expression.apply matches if respond_to? :selective_expression
-      matches
+    def match(events, precedents)
+
+      filtered_events = filtering_expression.apply events, []
+      
+      matches = [Match.new(filtered_events)]
+      matches = selective_expression.apply [Match.new(filtered_events)]
+      matches = joining_expression.apply matches, precedents if respond_to? :joining_expression
+
+      MatchingExpressionApplication.new matches, name, respond_to?(:joining_expression)
     end
 
-    def match_name
-      respond_to?(:name) ? name.value : nil
+    def name
+      naming_expressions = descendants_to NamingExpression
+      naming_expressions.any? ? naming_expressions.first.value : nil
+    end
+  end
+
+  class NamingExpression < Node
+    def value
+      name.value
     end
   end
 
   class ValueExpression < Node
-    def value(stream, context)
-      events = filtering_expression.apply(stream, context)
-      events = subset_expression.apply events if respond_to? :subset_expression
-      value = events.map{|event| event[:"#{name.value}"]}
+    def value(events, context)
+      filtered_events = filtering_expression.apply events, context
+      
+      # we need to covert to matches to apply a subset expression,
+      # we convert back after application
+      if respond_to? :subset_expression
+        matches = filtered_events.map {|event| Match.new [event]}
+        matches = subset_expression.apply matches
+        filtered_events = matches.map{|match| match.events.first}
+      end
+
+      value = filtered_events.map{|event| event[:"#{name.value}"]}
       value = reductive_operator.operate value if respond_to? :reductive_operator
       value
     end
   end
 
   class FilteringExpression < Node
-    def apply(stream, context)
-      stream.select &condition.to_proc(stream, context)
+    def apply(events, context, subject = nil)
+      events.select &condition.to_proc(events, context, subject)
+    end
+  end
+
+  class JoiningExpression < Node
+    def apply(matches, precedents)
+      subject_expression = precedents.find{|application| application.name == name.value}
+      raise "cannot perform join, expression named `#{name.value}` not found" unless subject_expression
+
+      matches = subject_expression.matches.reduce([]) do |memo, left_match|
+        memo + matches.reduce([]) do |memo, right_match|
+          filtered_events = right_match.events.select do |right_event|
+            left_match.events.any? do |left_event|
+              condition.to_proc([], [], left_event).call(right_event)
+            end
+          end
+
+          unless filtered_events.empty?
+            memo << Match.new(filtered_events, right_match.singular, left_match)
+          end
+
+          memo
+        end
+      end
+    end
+
+    def condition
+      filtering_expression.condition
     end
   end
 
@@ -161,7 +155,7 @@ module PQL
   # conditions
 
   class Condition < Node
-    def to_proc(stream, context)
+    def to_proc(events, context, subject)
       # return a proc taking an event and returning a boolean indicating whether
       # or not that event meets the condition
 
@@ -169,7 +163,7 @@ module PQL
         nodes = descendants_to Condition, AtomicCondition, LogicalOperator
         event_context = [event] + context
 
-        left_value = nodes.shift.compare stream, event_context
+        left_value = nodes.shift.compare events, event_context, subject
 
         while nodes.length > 1
           operator, right = nodes[0..1]
@@ -177,7 +171,7 @@ module PQL
 
           return false if left_value == false and operator.is_a?(AndOperator)
 
-          right_value = right.compare stream, event_context
+          right_value = right.compare events, event_context, subject
 
           left_value = operator.operate left_value, right_value
         end
@@ -188,25 +182,29 @@ module PQL
   end
 
   class AtomicCondition < Node
-    def compare(stream, context)
-      child.compare stream, context
+    def compare(events, context, subject)
+      child.compare events, context, subject
     end
   end
 
   class TypicalCondition < AtomicCondition
-    def compare(stream, context)
+    def compare(events, context, subject)
     end
   end
 
   class ComparativeCondition < AtomicCondition
-    def compare(stream, context)
+    def compare(events, context, subject)
       left_value, right_value = [left, right].map do |node|
         if node.is_a? Literal
           node.value
         elsif node.is_a? ValueExpression
-          node.value(stream, context)
+          node.value(events, context)
         elsif node.is_a? Reference
-          context[node.index][node.value]
+          if subject and node.subject
+            subject[node.value]
+          else
+            context[node.index][node.value]
+          end
         end
       end
 
@@ -218,20 +216,22 @@ module PQL
   # selective and subset expressions
 
   class SelectiveExpression < Node
-    def apply(stream)
+    def apply(matches)
       nodes = descendants_to LimitingExpression, OrderingExpression, CardinalityExpression
-      matches = [stream]
 
-      nodes.reverse.reduce(matches) do |matches, node|
-        node.apply(matches)
+      nodes.reverse.reduce matches do |matches, node|
+        node.apply matches
       end
     end
   end
 
   class SubsetExpression < Node
-    def apply(stream)
+    def apply(matches)
       nodes = descendants_to LimitingExpression, OrderingExpression
-      nodes.reverse.reduce(stream){|memo,node| node.apply(stream)}
+      
+      nodes.reverse.reduce matches do |matches, node|
+        node.apply matches
+      end
     end
   end
 
@@ -240,21 +240,27 @@ module PQL
 
   class LimitingExpression < Node
     def apply(matches)
-      matches.map{|match| child.operate match}
+      matches.map do |match|
+        child.operate match
+      end
     end
   end
 
   class FirstOperator < Node
-    def operate(stream)
+    def operate(match)
       quantity = (respond_to? :integer_literal) ? integer_literal.value : 1
-      stream[0, quantity]
+      match.singular = true if quantity == 1
+      match.events = match.events[0, quantity]
+      match
     end
   end
 
   class LastOperator < Node
-    def operate(stream)
+    def operate(match)
       quantity = (respond_to? :integer_literal) ? integer_literal.value : 1
-      stream.reverse[0, quantity]
+      match.singular = true if quantity == 1
+      match.events = match.events.reverse[0, quantity]
+      match
     end
   end
 
@@ -264,9 +270,9 @@ module PQL
   class OrderingExpression < Node
     def apply(matches)
       matches.map do |match|
-        result = match.sort_by{|event| event[name.value]}
-        result.reverse! if descending.text_value.length > 0
-        result
+        match.events = match.events.sort_by{|event| event[name.value]}
+        match.events.reverse! if descending.text_value.length > 0
+        match
       end
     end
   end
@@ -276,39 +282,44 @@ module PQL
 
   class CardinalityExpression < Node
     def apply(matches)
-      matches.reduce([]) do |memo, match|
+      matches.reduce [] do |memo, match|
         (memo && result = child.operate(match)) ? memo + result : nil
       end
     end
   end
 
-  class NoneOperator < Node
-    def operate(stream)
-      stream.none? ? [] : nil
-    end
-  end
-
-  class EachOperator < Node
-    def operate(stream)
-      stream.zip
-    end
-  end
-
   class AllOperator < Node
-    def operate(stream)
-      stream.any? ? [stream] : nil
+    def operate(match)
+      match.events.any? ? [match] : nil
+    end
+  end
+
+  class NoneOperator < Node
+    def operate(match)
+      match.events.none? ? [match] : nil
     end
   end
 
   class AnyOperator < Node
-    def operate(stream)
-      stream.any? ? [stream] : []
+    def operate(match)
+      [match]
+    end
+  end
+
+  class EachOperator < Node
+    def operate(match)
+      match.events.map do |event|
+        Match.new [event], true, match.join
+      end
     end
   end
 
   class GroupedByOperator < Node
-    def operate(stream)
-      stream.group_by{|event| event[:"#{name.value}"]}.values
+    def operate(match)
+      grouped = match.events.group_by{|event| event[:"#{name.value}"]}.values
+      grouped.map do |events|
+        Match.new events
+      end
     end
   end
 
@@ -530,6 +541,10 @@ module PQL
       name.value
     end
 
+    def subject
+      name.subject
+    end
+
     def index
       escapes.text_value.length
     end
@@ -537,7 +552,17 @@ module PQL
 
   class Name < Node
     def value
-      text_value.strip.to_sym
+      text_value.strip.split('.').last.to_sym
+    end
+
+    def subject
+      parts = text_value.strip.split '.'
+
+      if parts.length == 2
+        parts[0].to_sym
+      else
+        nil
+      end
     end
   end
 

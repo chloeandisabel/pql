@@ -1,11 +1,13 @@
+PATH
+  remote: .
+  specs:
+    pql (0.0.0)
+      treetop
+
 GEM
   remote: http://rubygems.org/
   specs:
-    macaddr (1.7.1)
-      systemu (~> 2.6.2)
-    mysql2 (0.3.15)
-    polyglot (0.3.4)
-    systemu (2.6.4)
+    polyglot (0.3.5)
     treetop (1.5.3)
       polyglot (~> 0.3)
 
@@ -13,6 +15,4 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  macaddr
-  mysql2
-  treetop
+  pql!
