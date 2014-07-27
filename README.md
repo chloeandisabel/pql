@@ -198,7 +198,7 @@ In blocks, joining expressions can be used to associate new matches with sepecif
     MATCH EACH AS item WHERE TYPE 'ItemAddedToCart';
     MATCH EACH AS discount WHERE TYPE 'ItemLevelDiscountApplied' JOINING item WHERE applied_to = item.id;
 
-Joining expressions end matching statements and consisit of the `JOINING` keyword, the name of a preceding match, and a filtering expression.  Within the filtering expression, columns on the preceding match can be named using dot notation, in this case `item.id`.
+Joining expressions end matching statements and consisit of the `JOINING` keyword, the name of a preceding match, and a filtering expression.  Within the filtering expression, columns on the named match are referenced using dot notation, in this case `item.id`.
 
 Matching statements with a join will always have a cardinality of one if they match any events, unless the matching statement already has failed based on its selective expressions.
 When applied to the following stream, this expression will match only two times, selecting the sets of events with ids (1,3) and (2,4).
