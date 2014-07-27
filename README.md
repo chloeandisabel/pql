@@ -200,8 +200,9 @@ In blocks, joining expressions can be used to associate new matches with sepecif
 
 Joining expressions end matching statements and consisit of the `JOINING` keyword, the name of a preceding match, and a filtering expression.  Within the filtering expression, columns on the named match are referenced using dot notation, in this case `item.id`.
 
-Matching statements with a join will always have a cardinality of one if they match any events, unless the matching statement already has failed based on its selective expressions.
-When applied to the following stream, this expression will match only two times, selecting the sets of events with ids (1,3) and (2,4).
+Matching statements with joins that successfuly match a stream have no effect on the cardinality of a block.  Statements that fail to match have a cardinality of zero.
+
+When applied to the following stream, the preceding block will match only two times, selecting the sets of events with ids (1,3) and (2,4).
 
 ```ruby
 {id: 1, type: 'ItemAddedToCart'},
