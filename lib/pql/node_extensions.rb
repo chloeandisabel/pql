@@ -78,11 +78,10 @@ module PQL
 
   class MatchingExpression < Node
     def match(events, precedents)
-
       filtered_events = filtering_expression.apply events, []
       
       matches = [Match.new(filtered_events)]
-      matches = selective_expression.apply [Match.new(filtered_events)]
+      matches = selective_expression.apply matches
       matches = joining_expression.apply matches, precedents if respond_to? :joining_expression
 
       MatchingExpressionApplication.new matches, name, respond_to?(:joining_expression)
@@ -131,14 +130,23 @@ module PQL
 
       matches = subject_expression.matches.reduce([]) do |memo, left_match|
         memo + matches.reduce([]) do |memo, right_match|
-          filtered_events = right_match.events.select do |right_event|
-            left_match.events.any? do |left_event|
-              condition.to_proc([], [], left_event).call(right_event)
-            end
-          end
 
-          unless filtered_events.empty?
-            memo << Match.new(filtered_events, right_match.singular, left_match)
+          if right_match.events.empty?
+          
+            memo << Match.new([], right_match.singular, left_match)
+          
+          else
+          
+            filtered_events = right_match.events.select do |right_event|
+              left_match.events.any? do |left_event|
+                condition.to_proc([], [], left_event).call(right_event)
+              end
+            end
+
+            unless filtered_events.empty?
+              memo << Match.new(filtered_events, right_match.singular, left_match)
+            end
+          
           end
 
           memo
