@@ -195,7 +195,7 @@ The matches would be the sets of events w/ ids (1, 3), (1, 4), (2, 3), and (2, 4
 
 In blocks, joining expressions can be used to associate new matches with sepecific matches produced by a preceding  statement.  For example, the following expression will match two times, associating each matched `ItemLevelDiscountApplied` event with a specific `ItemAddedToCart` event.
 
-    MATCH EACH AS item WHERE TYPE 'OrderItemSelected';
+    MATCH EACH AS item WHERE TYPE 'ItemAddedToCart';
     MATCH EACH AS discount WHERE TYPE 'ItemLevelDiscountApplied' JOINING item WHERE applied_to = item.id;
 
 Joining expressions end matching statements and consisit of the `JOINING` keyword, the name of a preceding match, and a filtering expression.  Within the filtering expression, columns on the preceding match can be named using dot notation, in this case `item.id`.
