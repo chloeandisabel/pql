@@ -63,6 +63,7 @@ module PQL
   # set of all matches produced by applying a block to a stream
 
   class BlockApplication
+    include Enumerable
 
     def initialize(expression_applications = [])
       @expression_applications = expression_applications
